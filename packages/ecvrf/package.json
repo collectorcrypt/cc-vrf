@@ -1,0 +1,26 @@
+{
+  "name": "@collectorcrypt/ecvrf",
+  "version": "0.1.0",
+  "description": "RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI verifiable random function",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "@noble/hashes": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.7.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
+  }
+}

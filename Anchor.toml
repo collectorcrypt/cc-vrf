@@ -1,0 +1,27 @@
+[toolchain]
+anchor_version = "0.31.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+cc_vrf = "5haPNg9hUP6EYXbUM8fWJr38VQQHj8X7ECnAkEctZe2c"
+
+[programs.devnet]
+cc_vrf = "5haPNg9hUP6EYXbUM8fWJr38VQQHj8X7ECnAkEctZe2c"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "pnpm exec vitest run --root programs/cc-vrf"
+
+[test]
+startup_wait = 10000
+shutdown_wait = 2000
+upgradeable = false

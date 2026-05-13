@@ -1,0 +1,70 @@
+/**
+ * @collectorcrypt/vrf-client
+ *
+ * TypeScript SDK for the cc-vrf on-chain VRF program. Wraps the Anchor IDL,
+ * Light Protocol compressed-PDA plumbing, and the RFC 9381 ECVRF library so
+ * consumers can publish, commit, and verify VRF proofs with one import.
+ */
+
+// Re-export the ECVRF primitives so consumers don't need a second import.
+export {
+  generateKeyPair,
+  publicKeyFromSeed,
+  proveVRF,
+  verifyVRF,
+  vrfProofToHash,
+  bytesToHex,
+  hexToBytes,
+} from "@collectorcrypt/ecvrf";
+
+export {
+  CC_VRF_PROGRAM_ID,
+  SUITE_EDWARDS25519_SHA512_TAI,
+  SUITE_EDWARDS25519_SHA512_ELL2,
+} from "./constants";
+
+export {
+  deriveAuthorityAddress,
+  deriveProofCommitAddress,
+  memoHash,
+  alphaHash,
+  proofHash,
+  encodeLabel,
+} from "./addresses";
+
+export {
+  forceLightV2,
+  buildCreateContext,
+  buildCommitProofContext,
+  buildMutateContext,
+} from "./light";
+
+export { getProgram } from "./program";
+
+export {
+  buildInitAuthorityIx,
+  buildFreezeAuthorityIx,
+  buildRevokeAuthorityIx,
+  buildCommitProofIx,
+  fetchAuthority,
+  fetchProofCommit,
+  decodeAuthority,
+  decodeProofCommit,
+  asTx,
+} from "./operations";
+
+export type {
+  InitAuthorityInput,
+  FreezeAuthorityInput,
+  CommitProofInput,
+} from "./operations";
+
+export {
+  verifyEndToEnd,
+} from "./verifyEndToEnd";
+
+export type {
+  OnChainCommit,
+  VerifyEndToEndInput,
+  VerifyEndToEndResult,
+} from "./verifyEndToEnd";

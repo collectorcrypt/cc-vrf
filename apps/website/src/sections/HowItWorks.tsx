@@ -1,0 +1,109 @@
+export function HowItWorks() {
+  return (
+    <section className="container-wide flex flex-col gap-8" id="how-it-works">
+      <header className="flex flex-col gap-3">
+        <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
+          How it works
+        </span>
+        <h2 className="section-title">
+          Lock the public key. Commit the proof hash. Verify anywhere.
+        </h2>
+        <p className="max-w-3xl text-ink-300">
+          The on-chain program does two things and only two things: it locks
+          each operator&rsquo;s VRF public key so the operator can&rsquo;t
+          silently rotate, and it stores a SHA-256 commitment for every VRF
+          call so the operator can&rsquo;t hide an unfavorable proof. The
+          randomness itself is computed off-chain in pure JS &mdash; no
+          cryptography runs on the program.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Step
+          n={1}
+          title="init_authority"
+          body="Operator generates an Ed25519 VRF keypair. The program writes (owner, pk, suite, label) to a compressed PDA. Cost: ~$0.00001."
+        />
+        <Step
+          n={2}
+          title="freeze_authority (optional)"
+          body="One-way flip — after this the pk and suite are permanent. Operators that publish randomness as a service freeze immediately so consumers can audit history against a fixed key."
+        />
+        <Step
+          n={3}
+          title="commit_proof"
+          body="For each VRF call: hash the memo (request id, slot, whatever), run ECVRF off-chain, post sha256(proof) + sha256(alpha) + sha256(memo) on-chain. The commit's PDA address depends on memo_hash, so replay is impossible by construction."
+        />
+        <Step
+          n={4}
+          title="verifyEndToEnd (anyone, off-chain)"
+          body="Fetch the on-chain commit, fetch the operator's published proof, run RFC 9381 verify. The SDK ships verifyEndToEnd that checks the four invariants (ECVRF valid + each hash matches) in one call."
+        />
+      </div>
+
+      <div className="card">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <h3 className="subsection-title mb-2">Trust model</h3>
+            <p className="text-sm text-ink-300">
+              Trust the operator who locked the pk to honestly produce VRF
+              proofs (i.e., not withhold them). The on-chain commitments make
+              any deviation &mdash; silent key rotation, proof withholding,
+              memo collision &mdash; cryptographically detectable.
+            </p>
+          </div>
+          <div>
+            <h3 className="subsection-title mb-2">What lives on-chain</h3>
+            <ul className="space-y-1 text-sm text-ink-300">
+              <li>
+                <code className="font-mono">VrfAuthority</code> &mdash;{" "}
+                <span className="text-ink-100">owner</span>,{" "}
+                <span className="text-ink-100">pk</span>,{" "}
+                <span className="text-ink-100">suite</span>,{" "}
+                <span className="text-ink-100">label</span>,{" "}
+                <span className="text-ink-100">frozen</span>,{" "}
+                <span className="text-ink-100">revoked</span>
+              </li>
+              <li>
+                <code className="font-mono">VrfProofCommit</code> &mdash;{" "}
+                <span className="text-ink-100">authority</span>,{" "}
+                <span className="text-ink-100">memo_hash</span>,{" "}
+                <span className="text-ink-100">proof_hash</span>,{" "}
+                <span className="text-ink-100">alpha_hash</span>,{" "}
+                <span className="text-ink-100">committed_slot</span>
+              </li>
+            </ul>
+            <p className="mt-2 text-xs text-ink-400">
+              Both are Light Protocol compressed PDAs &mdash; ~100x cheaper
+              than a normal Solana PDA.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Step({
+  n,
+  title,
+  body,
+}: {
+  n: number;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="card flex flex-col gap-2">
+      <div className="flex items-center gap-3">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-500/10 font-mono text-sm font-semibold text-accent-400">
+          {n}
+        </span>
+        <h3 className="font-mono text-base font-semibold text-ink-50">
+          {title}
+        </h3>
+      </div>
+      <p className="text-sm text-ink-300">{body}</p>
+    </div>
+  );
+}
