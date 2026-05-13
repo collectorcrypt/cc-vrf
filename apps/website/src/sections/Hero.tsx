@@ -4,25 +4,27 @@ export function Hero() {
   return (
     <section className="container-wide">
       <div className="flex flex-col gap-6">
-        <span className="pill">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent-500" />
-          permissionless on-chain VRF for Solana
-        </span>
         <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-ink-50 sm:text-5xl lg:text-6xl">
-          Verifiable randomness on Solana
-          <br />
-          for{" "}
+          Collector Crypt
+          <span className="text-ink-400"> &mdash; </span>
           <span className="bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent">
-            ~$0.0002 per call.
+            VRF.
           </span>
         </h1>
         <p className="max-w-2xl text-lg text-ink-300">
-          <code className="font-mono text-ink-100">cc-vrf</code> is a standalone
-          on-chain VRF system. Operators run RFC 9381 ECVRF off-chain; the
-          program locks each operator&rsquo;s public key and stores
-          <code className="font-mono text-ink-100"> sha256(proof)</code> per
-          call as a Light Protocol compressed PDA. Every roll is publicly
-          verifiable. No oracles, no subscription, no rotation risk.
+          We&rsquo;ve processed over{" "}
+          <span className="font-semibold text-ink-100">
+            20 million on-chain transactions
+          </span>
+          . Even at{" "}
+          <span className="font-semibold text-ink-100">four cents</span> per
+          VRF call, on-chain randomness was unaffordable at any real scale.{" "}
+          <code className="font-mono text-ink-100">cc-vrf</code> brings it down
+          to{" "}
+          <span className="font-semibold text-ink-100">~$0.0002 per call</span>{" "}
+          &mdash; as cheap as on-chain VRF gets &mdash; via RFC 9381 ECVRF and
+          Light Protocol compressed PDAs. On-chain VRF for the next generation
+          of web3 apps and games.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <a className="btn-primary" href="#get-started">
