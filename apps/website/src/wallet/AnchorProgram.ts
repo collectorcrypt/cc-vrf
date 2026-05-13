@@ -1,8 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Connection, PublicKey } from "@solana/web3.js";
 import {
-  AnchorWallet,
-} from "@solana/wallet-adapter-react";
+  ComputeBudgetProgram,
+  Connection,
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import { AnchorWallet } from "@solana/wallet-adapter-react";
 import { getProgram } from "@collectorcrypt/vrf-client";
 
 /**
@@ -18,6 +22,46 @@ export function buildProgramFromWallet(
     preflightCommitment: "confirmed",
   });
   return { program: getProgram(provider), provider };
+}
+
+/**
+ * Send an instruction via the connected wallet, using a *finalized*
+ * blockhash so that the wallet's own RPC (which often lags our Helius
+ * fast-devnet endpoint by a few slots) can still validate the tx during
+ * its preflight simulation. Without this, Phantom commonly rejects with
+ * "Blockhash is invalid or can not be validated".
+ */
+export async function sendIxViaWallet(
+  connection: Connection,
+  wallet: AnchorWallet,
+  ix: TransactionInstruction,
+  opts: { computeUnits?: number } = {},
+): Promise<string> {
+  const tx = new Transaction()
+    .add(
+      ComputeBudgetProgram.setComputeUnitLimit({
+        units: opts.computeUnits ?? 600_000,
+      }),
+    )
+    .add(ix);
+  tx.feePayer = wallet.publicKey;
+
+  // Finalized blockhash: at least ~32 slots old. Slow-to-propagate RPCs
+  // will already see it, so the wallet's preflight won't fail.
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash("finalized");
+  tx.recentBlockhash = blockhash;
+
+  const signed = await wallet.signTransaction(tx);
+  const sig = await connection.sendRawTransaction(signed.serialize(), {
+    skipPreflight: false,
+    preflightCommitment: "confirmed",
+  });
+  await connection.confirmTransaction(
+    { signature: sig, blockhash, lastValidBlockHeight },
+    "confirmed",
+  );
+  return sig;
 }
 
 export function isLikelyHeliusOrEquivalent(rpcUrl: string): boolean {

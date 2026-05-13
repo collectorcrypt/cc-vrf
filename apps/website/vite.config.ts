@@ -20,6 +20,7 @@ export default defineConfig({
       "@solana/web3.js",
       "@coral-xyz/anchor",
       "@lightprotocol/stateless.js",
+      "buffer",
     ],
   },
 });

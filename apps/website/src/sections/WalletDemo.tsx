@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
-import { useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
+import {
+  useConnection,
+  useAnchorWallet,
+  useWallet,
+} from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { ComputeBudgetProgram, Transaction } from "@solana/web3.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { createRpc } from "@lightprotocol/stateless.js";
 import {
@@ -22,6 +25,7 @@ import {
   explorerAddressUrl,
   explorerTxUrl,
   isLikelyHeliusOrEquivalent,
+  sendIxViaWallet,
 } from "../wallet/AnchorProgram";
 import { VITE_RPC_URL } from "../data/constants";
 import { CodeBlock } from "../components/CodeBlock";
@@ -80,6 +84,7 @@ const { valid } = verifyEndToEnd({
 export function WalletDemo() {
   const { connection } = useConnection();
   const wallet = useAnchorWallet();
+  const { disconnect, connected, wallet: selectedWallet } = useWallet();
 
   // Per-session VRF keypair. Persisted only in memory.
   const [vrfKeypair, setVrfKeypair] = useState(() => generateKeyPair());
@@ -100,27 +105,12 @@ export function WalletDemo() {
       ? "ready"
       : "needs-init";
 
-  async function checkAuthority() {
-    if (!wallet) return;
-    setBusy("checking authority…");
-    setError(null);
-    try {
-      const { program } = buildProgramFromWallet(connection, wallet);
-      const auth = await fetchAuthority(program, rpc, wallet.publicKey, label);
-      setAuthorityExists(!!auth);
-    } catch (e) {
-      setError(toErr(e));
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function initAuthority() {
     if (!wallet) return;
     setBusy("submitting init_authority…");
     setError(null);
     try {
-      const { program, provider } = buildProgramFromWallet(connection, wallet);
+      const { program } = buildProgramFromWallet(connection, wallet);
       const { ix, authorityAddress } = await buildInitAuthorityIx(
         program,
         rpc,
@@ -131,10 +121,7 @@ export function WalletDemo() {
           label,
         },
       );
-      const tx = new Transaction()
-        .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }))
-        .add(ix);
-      const sig = await provider.sendAndConfirm(tx, []);
+      const sig = await sendIxViaWallet(connection, wallet, ix);
       setAuthorityExists(true);
       setBusy(null);
       setRolls((prev) => [
@@ -158,7 +145,7 @@ export function WalletDemo() {
     setBusy("rolling…");
     setError(null);
     try {
-      const { program, provider } = buildProgramFromWallet(connection, wallet);
+      const { program } = buildProgramFromWallet(connection, wallet);
       const memo = `web-${Date.now()}`;
       const alpha = sha256(new TextEncoder().encode(memo));
       const { proof } = proveVRF(vrfKeypair.sk, alpha);
@@ -173,12 +160,7 @@ export function WalletDemo() {
         alpha,
         proof,
       });
-      const sig = await provider.sendAndConfirm(
-        new Transaction()
-          .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }))
-          .add(ix),
-        [],
-      );
+      const sig = await sendIxViaWallet(connection, wallet, ix);
 
       // Fetch + verify end-to-end against on-chain state.
       const auth = await fetchAuthority(program, rpc, wallet.publicKey, label);
@@ -251,9 +233,25 @@ export function WalletDemo() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.2fr]">
         <div className="card flex flex-col gap-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h3 className="subsection-title">Controls</h3>
-            <WalletMultiButton style={{ height: 32, fontSize: 12 }} />
+            <div className="flex items-center gap-2">
+              <WalletMultiButton style={{ height: 32, fontSize: 12 }} />
+              {connected && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void disconnect();
+                    setAuthorityExists(null);
+                    setRolls([]);
+                  }}
+                  className="rounded-md border border-ink-700 bg-ink-900 px-3 py-1 font-mono text-xs text-ink-300 hover:border-red-500/60 hover:text-red-200"
+                  title={`disconnect ${selectedWallet?.adapter.name ?? "wallet"}`}
+                >
+                  disconnect
+                </button>
+              )}
+            </div>
           </div>
 
           <label className="flex flex-col gap-1 text-sm text-ink-300">
@@ -294,13 +292,6 @@ export function WalletDemo() {
               disabled={busy != null}
             >
               new keypair
-            </button>
-            <button
-              className="btn-ghost"
-              onClick={checkAuthority}
-              disabled={!wallet || busy != null}
-            >
-              check authority
             </button>
             <button
               className="btn-primary"
