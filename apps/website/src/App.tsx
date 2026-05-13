@@ -1,4 +1,5 @@
 import { Hero } from "./sections/Hero";
+import { WhyWeMadeThis } from "./sections/WhyWeMadeThis";
 import { HowItWorks } from "./sections/HowItWorks";
 import { ClientDemo } from "./sections/ClientDemo";
 import { WalletDemo } from "./sections/WalletDemo";
@@ -19,6 +20,7 @@ export function App() {
         <ServerSidePattern />
         <CostComparison />
         <GetStarted />
+        <WhyWeMadeThis />
         <Footer />
       </main>
     </WalletProviders>
