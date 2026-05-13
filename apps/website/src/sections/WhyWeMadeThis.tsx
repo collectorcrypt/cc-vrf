@@ -9,7 +9,7 @@ export function WhyWeMadeThis() {
           We&rsquo;re{" "}
           <span className="text-accent-400">Collector Crypt</span>. We&rsquo;ve
           processed over{" "}
-          <span className="text-ink-50">20 million on-chain transactions</span>.
+          <span className="text-ink-50">20 million VRF transactions on-chain</span>.
         </h2>
       </header>
 

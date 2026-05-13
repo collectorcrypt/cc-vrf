@@ -68,18 +68,6 @@ export const PROVIDERS: Provider[] = [
       "SOL-price-sensitive. v3 'Randomness On-Demand' uses SGX-attested oracles.",
   },
   {
-    name: "Pyth Entropy (Solana)",
-    shortName: "Pyth Entropy",
-    chain: "solana",
-    costPerCallUsd: null,
-    breakdown:
-      "Not deployed on Solana mainnet as of May 2026 — EVM-only product.",
-    sourceUrl: "https://docs.pyth.network/entropy",
-    excludeFromChart: true,
-    notes:
-      "Confirmed via Pyth docs: provider addresses are listed for EVM chains only.",
-  },
-  {
     name: "Pyth Entropy (typical EVM L2)",
     shortName: "Pyth Entropy (L2)",
     chain: "evm-l2",
@@ -100,6 +88,7 @@ export const PROVIDERS: Provider[] = [
       "L2 verification + callback gas + L1 calldata buffer, plus 50% LINK / 60% native premium.",
     sourceUrl:
       "https://docs.chain.link/vrf/v2-5/arbitrum-cost-estimation",
+    excludeFromChart: true,
     notes: "Cross-chain context. Typically $0.05–$0.50 depending on L1 gas.",
   },
   {
@@ -110,6 +99,7 @@ export const PROVIDERS: Provider[] = [
     breakdown:
       "~300k gas (verification + callback) × current ETH gas + 20% LINK premium.",
     sourceUrl: "https://docs.chain.link/vrf/v2-5/supported-networks",
+    excludeFromChart: true,
     notes:
       "Highly gas-sensitive. ~$1–3 at the current ~1–2 gwei; jumps to $15–80 during gas spikes.",
   },
