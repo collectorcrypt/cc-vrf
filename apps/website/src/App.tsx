@@ -5,6 +5,7 @@ import { ClientDemo } from "./sections/ClientDemo";
 import { WalletDemo } from "./sections/WalletDemo";
 import { ServerSidePattern } from "./sections/ServerSidePattern";
 import { CostComparison } from "./sections/CostComparison";
+import { ClaudeSkill } from "./sections/ClaudeSkill";
 import { GetStarted } from "./sections/GetStarted";
 import { Footer } from "./sections/Footer";
 import { WalletProviders } from "./wallet/WalletProviders";
@@ -19,6 +20,7 @@ export function App() {
         <WalletDemo />
         <ServerSidePattern />
         <CostComparison />
+        <ClaudeSkill />
         <GetStarted />
         <WhyWeMadeThis />
         <Footer />
