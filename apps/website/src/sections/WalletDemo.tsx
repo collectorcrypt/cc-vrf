@@ -27,7 +27,7 @@ import {
   isLikelyHeliusOrEquivalent,
   sendIxViaWallet,
 } from "../wallet/AnchorProgram";
-import { VITE_RPC_URL } from "../data/constants";
+import { CC_VRF_PROGRAM_ID, VITE_RPC_URL } from "../data/constants";
 import { CodeBlock } from "../components/CodeBlock";
 
 type Phase = "needs-wallet" | "needs-init" | "ready" | "rolling";
@@ -215,8 +215,16 @@ export function WalletDemo() {
           real <code className="font-mono">init_authority</code> and{" "}
           <code className="font-mono">commit_proof</code> instructions against
           the deployed program{" "}
-          <span className="font-mono text-ink-100">ccvrfu3fSp…HqGtdgQ</span> on
-          devnet. Each roll is then fetched back and run through{" "}
+          <a
+            className="font-mono text-accent-400 hover:underline"
+            href={`https://explorer.solana.com/address/${CC_VRF_PROGRAM_ID}?cluster=devnet`}
+            target="_blank"
+            rel="noreferrer"
+            title="View program on Solana Explorer (devnet)"
+          >
+            ccvrfu3fSp…HqGtdgQ
+          </a>{" "}
+          on devnet. Each roll is then fetched back and run through{" "}
           <code className="font-mono">verifyEndToEnd</code>.
         </p>
       </header>

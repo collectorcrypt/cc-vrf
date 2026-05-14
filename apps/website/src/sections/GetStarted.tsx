@@ -47,13 +47,23 @@ export function GetStarted() {
           <div className="card flex flex-col gap-2">
             <h3 className="subsection-title">On-chain program</h3>
             <p className="text-sm text-ink-300">
-              Deployed on Solana devnet (mainnet deploy is the next milestone).
+              Live on Solana devnet (mainnet deploy is the next milestone).
               Permissionless &mdash; you don&rsquo;t need our blessing to use
               it.
             </p>
             <dl className="kv">
               <dt>program id</dt>
-              <dd className="font-mono">{CC_VRF_PROGRAM_ID}</dd>
+              <dd>
+                <a
+                  className="font-mono text-accent-400 hover:underline"
+                  href={`https://explorer.solana.com/address/${CC_VRF_PROGRAM_ID}?cluster=devnet`}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="View on Solana Explorer (devnet)"
+                >
+                  {CC_VRF_PROGRAM_ID}
+                </a>
+              </dd>
               <dt>cluster</dt>
               <dd>devnet</dd>
               <dt>idl + types</dt>
