@@ -204,7 +204,7 @@ export async function POST(req: Request) {
 
 ## Reference
 
-- **Program ID (devnet):** `5haPNg9hUP6EYXbUM8fWJr38VQQHj8X7ECnAkEctZe2c`
+- **Program ID:** `ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ` (same on devnet + mainnet)
 - **Cluster:** devnet (mainnet pending)
 - **Source:** https://github.com/daxherrera/cc-vrf
 - **Spec:** RFC 9381 §5.5 (ECVRF-EDWARDS25519-SHA512-TAI, suite identifier `0x03`)

@@ -16,12 +16,12 @@ pub use light_sdk::instruction::{
     PackedAddressTreeInfo, ValidityProof,
 };
 
-declare_id!("5haPNg9hUP6EYXbUM8fWJr38VQQHj8X7ECnAkEctZe2c");
+declare_id!("ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ");
 
 /// Compile-time-derived signer the Light system program expects when our
 /// program CPIs into it.
 pub const LIGHT_CPI_SIGNER: CpiSigner =
-    derive_light_cpi_signer!("5haPNg9hUP6EYXbUM8fWJr38VQQHj8X7ECnAkEctZe2c");
+    derive_light_cpi_signer!("ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ");
 
 #[program]
 pub mod cc_vrf {

@@ -5,7 +5,7 @@ import { PublicKey } from "@solana/web3.js";
  * Override via `new VrfClient({ programId })` for devnet/local testing.
  */
 export const CC_VRF_PROGRAM_ID = new PublicKey(
-  "5haPNg9hUP6EYXbUM8fWJr38VQQHj8X7ECnAkEctZe2c",
+  "ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ",
 );
 
 export const AUTHORITY_SEED = new TextEncoder().encode("vrf_authority");

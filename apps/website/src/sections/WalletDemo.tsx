@@ -215,7 +215,7 @@ export function WalletDemo() {
           real <code className="font-mono">init_authority</code> and{" "}
           <code className="font-mono">commit_proof</code> instructions against
           the deployed program{" "}
-          <span className="font-mono text-ink-100">5haPNg9hUP6E…ctZe2c</span> on
+          <span className="font-mono text-ink-100">ccvrfu3fSp…HqGtdgQ</span> on
           devnet. Each roll is then fetched back and run through{" "}
           <code className="font-mono">verifyEndToEnd</code>.
         </p>

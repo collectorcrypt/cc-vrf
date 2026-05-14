@@ -6,10 +6,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-cc_vrf = "5haPNg9hUP6EYXbUM8fWJr38VQQHj8X7ECnAkEctZe2c"
+cc_vrf = "ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ"
 
 [programs.devnet]
-cc_vrf = "5haPNg9hUP6EYXbUM8fWJr38VQQHj8X7ECnAkEctZe2c"
+cc_vrf = "ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ"
+
+[programs.mainnet]
+cc_vrf = "ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ"
 
 [registry]
 url = "https://api.apr.dev"

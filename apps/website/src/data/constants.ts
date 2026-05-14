@@ -1,4 +1,4 @@
-export const CC_VRF_PROGRAM_ID = "5haPNg9hUP6EYXbUM8fWJr38VQQHj8X7ECnAkEctZe2c";
+export const CC_VRF_PROGRAM_ID = "ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ";
 
 export const GITHUB_URL = "https://github.com/collectorcrypt/cc-vrf";
 
