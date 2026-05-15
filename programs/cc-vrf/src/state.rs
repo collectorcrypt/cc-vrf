@@ -61,3 +61,40 @@ pub struct VrfProofCommit {
 impl VrfProofCommit {
     pub const SEED_PREFIX: &'static [u8] = b"vrf_proof";
 }
+
+/// Same shape as `VrfProofCommit` but also stores the 64-byte `beta` output
+/// of `vrfProofToHash`. With `beta` on-chain, other Solana programs can read
+/// the random value directly via a Light SDK CPI without needing the original
+/// proof bytes off-chain.
+///
+/// Trust model is identical to `VrfProofCommit`: anyone can later audit that
+/// the stored `beta` matches `vrfProofToHash(proof)` and that the proof
+/// satisfies ECVRF — but a consuming program reading on-chain trusts that
+/// the operator (whose pk is frozen in `VrfAuthority`) populated it
+/// correctly.
+///
+/// Seeds: ["vrf_proof_b", authority_pda_pubkey, memo_hash]
+#[event]
+#[derive(Clone, Debug, Default, LightDiscriminator, LightHasher)]
+pub struct VrfProofCommitWithBeta {
+    #[hash]
+    pub authority: Pubkey,
+    #[hash]
+    pub memo_hash: [u8; 32],
+    #[hash]
+    pub proof_hash: [u8; 32],
+    #[hash]
+    pub alpha_hash: [u8; 32],
+    /// First 32 bytes of the 64-byte beta. Split because LightHasher caps
+    /// each field at 32 bytes.
+    #[hash]
+    pub beta_lo: [u8; 32],
+    /// Second 32 bytes of the 64-byte beta.
+    #[hash]
+    pub beta_hi: [u8; 32],
+    pub committed_slot: u64,
+}
+
+impl VrfProofCommitWithBeta {
+    pub const SEED_PREFIX: &'static [u8] = b"vrf_proof_b";
+}

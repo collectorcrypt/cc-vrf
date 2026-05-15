@@ -12,9 +12,14 @@ import {
   buildInitAuthorityIx,
   buildFreezeAuthorityIx,
   buildCommitProofIx,
+  buildCommitProofEventIx,
+  buildCommitProofWithBetaIx,
   fetchAuthority,
   fetchProofCommit,
+  fetchProofCommitWithBeta,
+  fetchProofCommitEvents,
   getProgram,
+  pickCanonicalCommit,
   verifyEndToEnd,
 } from "@collectorcrypt/vrf-client";
 
@@ -137,6 +142,97 @@ describeMaybe("cc-vrf live smoke test (devnet)", () => {
       proof,
       memo,
       onChainCommit: commit!.onChainCommit,
+    });
+    expect(result.valid).toBe(true);
+    expect(bytesToHex(result.beta!)).toBe(bytesToHex(beta));
+  });
+
+  it("commit_proof_with_beta stores beta on chain alongside the commit (pda+beta mode)", { timeout: 180_000 }, async () => {
+    const memo = `${label}-beta-1`;
+    const alpha = sha256(new TextEncoder().encode(memo));
+    const { proof } = proveVRF(vrfSk, alpha);
+    const beta = vrfProofToHash(proof);
+
+    const { ix, commitAddress } = await buildCommitProofWithBetaIx(program, rpc, {
+      owner: payer.publicKey,
+      label,
+      memo,
+      alpha,
+      proof,
+      beta,
+    });
+    const sig = await provider.sendAndConfirm(
+      new Transaction()
+        .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 600_000 }))
+        .add(ix),
+      [],
+    );
+    console.log("commit-with-beta tx:", sig);
+
+    const auth = (await fetchAuthority(program, rpc, payer.publicKey, label))!;
+    const commit = await fetchProofCommitWithBeta(
+      program,
+      rpc,
+      auth.authorityAddress,
+      memo,
+    );
+    expect(commit).not.toBeNull();
+    expect(commit!.commitAddress.toBase58()).toBe(commitAddress.toBase58());
+    expect(bytesToHex(commit!.beta)).toBe(bytesToHex(beta));
+
+    const result = verifyEndToEnd({
+      pk: vrfPk,
+      alpha,
+      proof,
+      memo,
+      onChainCommit: commit!.onChainCommit,
+    });
+    expect(result.valid).toBe(true);
+    expect(bytesToHex(result.beta!)).toBe(bytesToHex(beta));
+  });
+
+  it("commit_proof_event emits a verifiable randomness call (event mode)", { timeout: 180_000 }, async () => {
+    const memo = `${label}-event-1`;
+    const alpha = sha256(new TextEncoder().encode(memo));
+    const { proof } = proveVRF(vrfSk, alpha);
+    const beta = vrfProofToHash(proof);
+
+    const ix = await buildCommitProofEventIx(program, {
+      owner: payer.publicKey,
+      label,
+      memo,
+      alpha,
+      proof,
+    });
+    const sig = await provider.sendAndConfirm(
+      new Transaction()
+        .add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }))
+        .add(ix),
+      [],
+    );
+    console.log("commit-event tx:", sig);
+
+    const events = await fetchProofCommitEvents(
+      program,
+      provider.connection,
+      payer.publicKey,
+      label,
+      memo,
+    );
+    expect(events.length).toBeGreaterThan(0);
+
+    const picked = pickCanonicalCommit(
+      events.map((e) => e.onChainCommit),
+      proof,
+    );
+    expect(picked.canonical).not.toBeNull();
+
+    const result = verifyEndToEnd({
+      pk: vrfPk,
+      alpha,
+      proof,
+      memo,
+      onChainCommit: picked.canonical!,
     });
     expect(result.valid).toBe(true);
     expect(bytesToHex(result.beta!)).toBe(bytesToHex(beta));

@@ -26,6 +26,7 @@ export {
 export {
   deriveAuthorityAddress,
   deriveProofCommitAddress,
+  deriveProofCommitWithBetaAddress,
   memoHash,
   alphaHash,
   proofHash,
@@ -46,10 +47,15 @@ export {
   buildFreezeAuthorityIx,
   buildRevokeAuthorityIx,
   buildCommitProofIx,
+  buildCommitProofEventIx,
+  buildCommitProofWithBetaIx,
   fetchAuthority,
   fetchProofCommit,
+  fetchProofCommitWithBeta,
+  fetchProofCommitEvents,
   decodeAuthority,
   decodeProofCommit,
+  decodeProofCommitWithBeta,
   asTx,
 } from "./operations";
 
@@ -57,14 +63,17 @@ export type {
   InitAuthorityInput,
   FreezeAuthorityInput,
   CommitProofInput,
+  ProofCommitEvent,
 } from "./operations";
 
 export {
   verifyEndToEnd,
+  pickCanonicalCommit,
 } from "./verifyEndToEnd";
 
 export type {
   OnChainCommit,
   VerifyEndToEndInput,
   VerifyEndToEndResult,
+  PickCanonicalResult,
 } from "./verifyEndToEnd";

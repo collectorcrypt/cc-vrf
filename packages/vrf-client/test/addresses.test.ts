@@ -5,6 +5,7 @@ import {
   alphaHash,
   deriveAuthorityAddress,
   deriveProofCommitAddress,
+  deriveProofCommitWithBetaAddress,
   encodeLabel,
   memoHash,
   proofHash,
@@ -65,6 +66,25 @@ describe("address derivation", () => {
     const pa = deriveProofCommitAddress(a1, mh, CC_VRF_PROGRAM_ID);
     const pb = deriveProofCommitAddress(a2, mh, CC_VRF_PROGRAM_ID);
     expect(pa.toBase58()).not.toBe(pb.toBase58());
+  });
+
+  it("with-beta commits live at a different address than regular commits for the same memo", () => {
+    // Critical safety property: the two variants share authority + memo, but
+    // their on-chain addresses must NEVER collide, so the same authority can
+    // mix modes without overwriting itself.
+    const authority = Keypair.generate().publicKey;
+    const mh = memoHash("same-memo");
+    const regular = deriveProofCommitAddress(authority, mh, CC_VRF_PROGRAM_ID);
+    const withBeta = deriveProofCommitWithBetaAddress(authority, mh, CC_VRF_PROGRAM_ID);
+    expect(regular.toBase58()).not.toBe(withBeta.toBase58());
+  });
+
+  it("with-beta address is deterministic for the same (authority, memo)", () => {
+    const authority = Keypair.generate().publicKey;
+    const mh = memoHash("repeat-memo");
+    const a = deriveProofCommitWithBetaAddress(authority, mh, CC_VRF_PROGRAM_ID);
+    const b = deriveProofCommitWithBetaAddress(authority, mh, CC_VRF_PROGRAM_ID);
+    expect(a.toBase58()).toBe(b.toBase58());
   });
 
   it("rejects mis-sized labels and memo hashes", () => {

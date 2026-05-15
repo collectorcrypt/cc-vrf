@@ -5,7 +5,7 @@ import {
   deriveAddressV2,
 } from "@lightprotocol/stateless.js";
 import { sha256 } from "@noble/hashes/sha2.js";
-import { AUTHORITY_SEED, PROOF_COMMIT_SEED } from "./constants";
+import { AUTHORITY_SEED, PROOF_COMMIT_SEED, PROOF_COMMIT_WITH_BETA_SEED } from "./constants";
 
 /**
  * Derive the compressed-PDA address of a VrfAuthority. This is the address
@@ -40,6 +40,30 @@ export function deriveProofCommitAddress(
   }
   const seed = deriveAddressSeedV2([
     PROOF_COMMIT_SEED,
+    authority.toBytes(),
+    memoHash,
+  ]);
+  return deriveAddressV2(seed, new PublicKey(batchAddressTree), programId);
+}
+
+/**
+ * Derive the compressed-PDA address of a VrfProofCommitWithBeta. Uses a
+ * different seed prefix so these records live alongside, not on top of,
+ * regular VrfProofCommit records — same authority can use both modes for
+ * different memos.
+ *
+ * Seeds: ["vrf_proof_b", authority_pubkey, memo_hash]
+ */
+export function deriveProofCommitWithBetaAddress(
+  authority: PublicKey,
+  memoHash: Uint8Array,
+  programId: PublicKey,
+): PublicKey {
+  if (memoHash.length !== 32) {
+    throw new Error("memoHash must be exactly 32 bytes");
+  }
+  const seed = deriveAddressSeedV2([
+    PROOF_COMMIT_WITH_BETA_SEED,
     authority.toBytes(),
     memoHash,
   ]);

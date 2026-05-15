@@ -5,9 +5,11 @@ use anchor_lang::prelude::*;
 use light_sdk::{cpi::CpiSigner, derive_light_cpi_signer};
 
 pub mod errors;
+pub mod events;
 pub mod instructions;
 pub mod state;
 
+pub use events::*;
 pub use instructions::*;
 pub use state::*;
 
@@ -81,6 +83,23 @@ pub mod cc_vrf {
         )
     }
 
+    /// Event-mode commit: emits a `VrfProofCommitted` log instead of creating
+    /// a compressed PDA. ~5x cheaper than `commit_proof`. No on-chain replay
+    /// protection — verifiers must detect duplicate memos and pick the proof
+    /// that satisfies the VRF math (which is deterministic, so the real one
+    /// is always recoverable).
+    pub fn commit_proof_event(
+        ctx: Context<CommitProofEvent>,
+        label: [u8; 32],
+        memo_hash: [u8; 32],
+        proof_hash: [u8; 32],
+        alpha_hash: [u8; 32],
+    ) -> Result<()> {
+        instructions::commit_proof_event::commit_proof_event_handler(
+            ctx, label, memo_hash, proof_hash, alpha_hash,
+        )
+    }
+
     /// Posts a per-VRF-call commitment to a new VrfProofCommit compressed
     /// PDA. Address is `(authority_pda, memo_hash)` — replay-protected by
     /// the PDA itself.
@@ -105,6 +124,40 @@ pub mod cc_vrf {
             memo_hash,
             proof_hash,
             alpha_hash,
+        )
+    }
+
+    /// Like `commit_proof`, but also stores the 64-byte ECVRF beta output
+    /// (split as `beta_lo` + `beta_hi`) in the new compressed PDA. Use this
+    /// when another Solana program needs to read the random value directly
+    /// via a Light SDK CPI, without going through an off-chain fetch of the
+    /// proof bytes. Stored at a different seed prefix so it doesn't collide
+    /// with `commit_proof` records.
+    pub fn commit_proof_with_beta<'info>(
+        ctx: Context<'_, '_, '_, 'info, CommitProofWithBeta<'info>>,
+        proof: ValidityProof,
+        authority_account_meta: CompressedAccountMetaReadOnly,
+        current_authority: VrfAuthority,
+        address_tree_info: PackedAddressTreeInfo,
+        output_state_tree_index: u8,
+        memo_hash: [u8; 32],
+        proof_hash: [u8; 32],
+        alpha_hash: [u8; 32],
+        beta_lo: [u8; 32],
+        beta_hi: [u8; 32],
+    ) -> Result<()> {
+        instructions::commit_proof_with_beta::commit_proof_with_beta_handler(
+            ctx,
+            proof,
+            authority_account_meta,
+            current_authority,
+            address_tree_info,
+            output_state_tree_index,
+            memo_hash,
+            proof_hash,
+            alpha_hash,
+            beta_lo,
+            beta_hi,
         )
     }
 }

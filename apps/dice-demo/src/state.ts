@@ -23,6 +23,16 @@ export interface DemoState {
     rollValue: number;
     commitAddressBase58: string;
     committedAtIso: string;
+    /**
+     * Which on-chain variant was used:
+     *   - "pda": commit_proof (compressed PDA, off-chain verification)
+     *   - "pda-beta": commit_proof_with_beta (PDA + on-chain beta for cross-program reads)
+     *   - "event": commit_proof_event (event-only, no PDA)
+     * Defaults to "pda" for legacy rolls that pre-date this field.
+     */
+    mode?: "pda" | "pda-beta" | "event";
+    /** Tx signature for event-mode rolls (event has no deterministic address to look up). */
+    txSignature?: string;
   }[];
 }
 

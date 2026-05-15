@@ -12,9 +12,16 @@ export function Hero() {
           </span>
         </h1>
         <p className="max-w-2xl text-lg text-ink-300">
-          Permissionless on-chain randomness for Solana. RFC 9381 ECVRF,{" "}
-          <span className="font-semibold text-ink-100">~$0.0002 per call</span>,
-          and every roll is verifiable by anyone.
+          Permissionless on-chain randomness for Solana. RFC 9381 ECVRF, two
+          commit modes (
+          <a href="#/registry" className="font-semibold text-accent-400 hover:underline">
+            registry
+          </a>{" "}
+          or{" "}
+          <a href="#/events" className="font-semibold text-accent-400 hover:underline">
+            event
+          </a>
+          ), and every roll is verifiable by anyone.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <a className="btn-primary" href="#get-started">
@@ -24,16 +31,16 @@ export function Hero() {
           <a className="btn-ghost" href={GITHUB_URL}>
             View on GitHub
           </a>
-          <a className="btn-ghost" href="#cost">
-            See the cost chart
+          <a className="btn-ghost" href="#modes">
+            Compare the two modes
           </a>
-          <a className="btn-ghost" href="#why">
-            Why we made this
+          <a className="btn-ghost" href="#cost">
+            Cost vs. competitors
           </a>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm text-ink-300 sm:grid-cols-3">
-          <Stat label="Per-call cost" value="~$0.0002" sub="batched" />
-          <Stat label="ECVRF compliance" value="RFC 9381" sub="byte-exact" />
+          <Stat label="Per-call (event mode)" value="~$0.0008" sub="measured on devnet" />
+          <Stat label="Per-call (registry mode)" value="~$0.0024" sub="measured on devnet" />
           <Stat label="Setup" value="Permissionless" sub="no token, no oracle" />
         </div>
       </div>

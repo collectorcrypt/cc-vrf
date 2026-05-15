@@ -61,6 +61,50 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
  * or memo after the fact — the result is provably tied to the on-chain
  * commitment.
  */
+/**
+ * Result of picking the canonical commit from a list of events for the same
+ * `(authority, memo)`. The "canonical" commit is the unique event whose
+ * `proof_hash` matches the SHA-256 of a proof that verifies under ECVRF.
+ *
+ * Because ECVRF proofs are deterministic for a given (pk, alpha), at most one
+ * candidate can have a valid `proof_hash`. Extra events (which the chain
+ * allows in event-mode) are simply garbage payloads — detectable, not a
+ * successful forgery.
+ */
+export interface PickCanonicalResult {
+  /** The single event whose committed hash matches the verifying proof, or null if none verify. */
+  canonical: OnChainCommit | null;
+  /** All candidates inspected, in the order supplied. */
+  candidates: OnChainCommit[];
+  /** Whether more than one event was found for the same memo. Informational. */
+  duplicateMemoEvents: boolean;
+  /** Whether more than one candidate's `proof_hash` matched a verifying proof (should be impossible if ECVRF is sound). */
+  multipleVerifying: boolean;
+}
+
+/**
+ * Resolve which committed event corresponds to a known-valid proof. Use this
+ * when fetching event-mode commits where the chain doesn't enforce
+ * one-commit-per-memo. Pass in all candidates from `fetchProofCommitEvents`
+ * plus the proof bytes the operator gave you; you get back the unique
+ * canonical row (or null if none match).
+ */
+export function pickCanonicalCommit(
+  candidates: OnChainCommit[],
+  proof: Uint8Array,
+): PickCanonicalResult {
+  const proofHash = sha256(proof);
+  const matching = candidates.filter((c) =>
+    bytesEqual(proofHash, c.proofHash),
+  );
+  return {
+    canonical: matching[0] ?? null,
+    candidates,
+    duplicateMemoEvents: candidates.length > 1,
+    multipleVerifying: matching.length > 1,
+  };
+}
+
 export function verifyEndToEnd(
   input: VerifyEndToEndInput,
 ): VerifyEndToEndResult {

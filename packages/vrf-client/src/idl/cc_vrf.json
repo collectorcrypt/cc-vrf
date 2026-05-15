@@ -98,6 +98,182 @@
       ]
     },
     {
+      "name": "commit_proof_event",
+      "docs": [
+        "Event-mode commit: emits a `VrfProofCommitted` log instead of creating",
+        "a compressed PDA. ~5x cheaper than `commit_proof`. No on-chain replay",
+        "protection — verifiers must detect duplicate memos and pick the proof",
+        "that satisfies the VRF math (which is deterministic, so the real one",
+        "is always recoverable)."
+      ],
+      "discriminator": [
+        169,
+        197,
+        162,
+        183,
+        63,
+        145,
+        136,
+        30
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "label",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "memo_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proof_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "alpha_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "commit_proof_with_beta",
+      "docs": [
+        "Like `commit_proof`, but also stores the 64-byte ECVRF beta output",
+        "(split as `beta_lo` + `beta_hi`) in the new compressed PDA. Use this",
+        "when another Solana program needs to read the random value directly",
+        "via a Light SDK CPI, without going through an off-chain fetch of the",
+        "proof bytes. Stored at a different seed prefix so it doesn't collide",
+        "with `commit_proof` records."
+      ],
+      "discriminator": [
+        199,
+        253,
+        178,
+        3,
+        187,
+        191,
+        68,
+        230
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "authority_account_meta",
+          "type": {
+            "defined": {
+              "name": "CompressedAccountMetaReadOnly"
+            }
+          }
+        },
+        {
+          "name": "current_authority",
+          "type": {
+            "defined": {
+              "name": "VrfAuthority"
+            }
+          }
+        },
+        {
+          "name": "address_tree_info",
+          "type": {
+            "defined": {
+              "name": "PackedAddressTreeInfo"
+            }
+          }
+        },
+        {
+          "name": "output_state_tree_index",
+          "type": "u8"
+        },
+        {
+          "name": "memo_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proof_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "alpha_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "beta_lo",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "beta_hi",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "freeze_authority",
       "docs": [
         "One-way: flip `frozen=true`. After this, the pk and suite are",
@@ -295,6 +471,32 @@
         42,
         21,
         141
+      ]
+    },
+    {
+      "name": "VrfProofCommitWithBeta",
+      "discriminator": [
+        122,
+        231,
+        247,
+        49,
+        102,
+        24,
+        126,
+        222
+      ]
+    },
+    {
+      "name": "VrfProofCommitted",
+      "discriminator": [
+        161,
+        215,
+        0,
+        96,
+        144,
+        150,
+        236,
+        162
       ]
     }
   ],
@@ -590,6 +792,161 @@
           {
             "name": "authority",
             "type": "pubkey"
+          },
+          {
+            "name": "memo_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proof_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "alpha_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "committed_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VrfProofCommitWithBeta",
+      "docs": [
+        "Same shape as `VrfProofCommit` but also stores the 64-byte `beta` output",
+        "of `vrfProofToHash`. With `beta` on-chain, other Solana programs can read",
+        "the random value directly via a Light SDK CPI without needing the original",
+        "proof bytes off-chain.",
+        "",
+        "Trust model is identical to `VrfProofCommit`: anyone can later audit that",
+        "the stored `beta` matches `vrfProofToHash(proof)` and that the proof",
+        "satisfies ECVRF — but a consuming program reading on-chain trusts that",
+        "the operator (whose pk is frozen in `VrfAuthority`) populated it",
+        "correctly.",
+        "",
+        "Seeds: [\"vrf_proof_b\", authority_pda_pubkey, memo_hash]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "memo_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proof_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "alpha_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "beta_lo",
+            "docs": [
+              "First 32 bytes of the 64-byte beta. Split because LightHasher caps",
+              "each field at 32 bytes."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "beta_hi",
+            "docs": [
+              "Second 32 bytes of the 64-byte beta."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "committed_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VrfProofCommitted",
+      "docs": [
+        "Event-mode commitment emitted by `commit_proof_event`. Unlike `VrfProofCommit`,",
+        "this never creates a compressed PDA — it just lives in the transaction log.",
+        "",
+        "Off-chain verifiers reconstruct the authority address from `(owner, label)`",
+        "using the same seed derivation as a `VrfAuthority`, then look up the",
+        "authority's compressed PDA for the published pk / suite / frozen state.",
+        "",
+        "Replay protection is moved from the chain to the verifier: a malicious",
+        "operator could emit two events with the same `memo_hash` and different",
+        "`proof_hash`es. The VRF proof is deterministic given the pk + alpha, so at",
+        "most one of those would pass `verifyEndToEnd` — verifiers must scan for",
+        "duplicates and reject ambiguous memos."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "docs": [
+              "The signer who emitted this commit. Implicitly the authority owner —",
+              "off-chain verifiers re-derive the authority address from (owner, label)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "label",
+            "docs": [
+              "32-byte authority label, matches the seed used by `VrfAuthority`."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
             "name": "memo_hash",
