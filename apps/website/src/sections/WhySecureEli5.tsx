@@ -7,28 +7,28 @@ export function WhySecureEli5() {
         </span>
         <h2 className="section-title">Why is this secure? ELI5.</h2>
         <p className="max-w-3xl text-ink-300">
-          Imagine a weighted die that always lands the same way for any given
-          throw. The operator owns the die, but <em>you</em> choose the throw
-          &mdash; and anyone can check the result is the only number that die
-          could have rolled.
+          Pick a card, any card. The operator holds a deck where every slot
+          already has a card in it &mdash; fixed by a secret only they know.
+          <em> You</em> pick which slot. They hand you the card that was always
+          there, plus the fanned-out proof anyone can check.
         </p>
       </header>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Step
           n={1}
-          title="You pick the throw"
-          body="You (or your dApp) decide the input — a request ID, a slot number, a bingo round. The operator never picks it, so they can't fish for a result they like."
+          title="You pick the card"
+          body="You (or your dApp) name the input — a request ID, a slot number, a bingo round. That's your pick. The operator never gets to choose, so they can't slide themselves a favorable card."
         />
         <Step
           n={2}
-          title="The operator owns the die"
-          body="The operator holds one secret key. It's the only thing they bring to the table. They locked its public half on-chain up front, so they can't swap dice mid-game."
+          title="The deck is already set"
+          body="The operator's secret key fixes which card lives in every slot. They locked the deck's identity on-chain up front, so they can't quietly swap in a different deck once they see your pick."
         />
         <Step
           n={3}
-          title="The die is rigged — in a good way"
-          body="For any input + secret pair there is exactly one valid roll, and anyone can check the math. The operator can't make the die land differently next time; they can only refuse to throw."
+          title="The fan is the proof"
+          body="When they hand you the card, they also show the proof — the math equivalent of fanning the deck out so you can see nothing was palmed, swapped, or invented after the fact."
         />
       </div>
 
@@ -37,11 +37,12 @@ export function WhySecureEli5() {
           Why this beats &ldquo;trust me, it&rsquo;s random&rdquo;
         </h3>
         <p className="text-sm text-ink-300">
-          The operator can&rsquo;t choose the output, can&rsquo;t fake it after
-          the fact (the proof is committed on-chain the moment the die is
-          thrown), and can&rsquo;t deny the roll later. Anyone &mdash; not just
-          you &mdash; can verify the random value was the only legal answer for
-          that input.
+          The operator can&rsquo;t choose your card, can&rsquo;t swap it after
+          you&rsquo;ve picked, and can&rsquo;t pretend the proof never existed
+          &mdash; it&rsquo;s committed on-chain the moment the card is drawn.
+          Anyone &mdash; not just you &mdash; can hold up the fan and confirm
+          the card you got was the only card that could ever have lived in that
+          slot.
         </p>
       </div>
     </section>

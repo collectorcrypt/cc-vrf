@@ -11,6 +11,7 @@ export { generateKeyPair, publicKeyFromSeed, deriveScalar } from "./keypair";
 export { proveVRF } from "./prove";
 export { verifyVRF } from "./verify";
 export { vrfProofToHash } from "./proofToHash";
+export { vrfStream, type VrfStream } from "./expand";
 export {
   bytesToHex,
   hexToBytes,
