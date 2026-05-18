@@ -28,14 +28,14 @@ lifecycle:
 
 pda mode (chain enforces 1-commit-per-memo):
   roll [memo]             commit_proof: write a compressed PDA per roll
-  verify [memo]           fetch PDA + verifyEndToEnd
+  verify [memo]           fetch PDA + verifyAuthorityCommitEndToEnd
   simulate <N>            N back-to-back PDA roll+verify cycles
 
 pda + beta mode (PDA mode + on-chain beta for cross-program reads):
   roll-with-beta [memo]   commit_proof_with_beta: stores 64-byte beta on chain
   verify-with-beta [memo] fetch PDA, verify, also check on-chain beta
 
-event mode (cheapest, verifier-side replay handling, no Photon RPC needed):
+event mode (cheapest state footprint, verifier-side replay handling):
   roll-event [memo]       commit_proof_event: emit a log event per roll
   verify-event [memo]     fetch events for the memo, pick canonical, verify
   simulate-event <N>      N back-to-back event roll+verify cycles

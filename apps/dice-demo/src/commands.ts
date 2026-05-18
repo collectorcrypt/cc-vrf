@@ -25,14 +25,11 @@ import {
   fetchProofCommitEvents,
   getProgram,
   pickCanonicalCommit,
-  verifyEndToEnd,
+  verifyAuthorityCommitEndToEnd,
+  encodeLabel,
 } from "@collectorcrypt/vrf-client";
 
-import {
-  buildAnchorProvider,
-  buildLightRpc,
-  loadPayer,
-} from "./connection";
+import { buildAnchorProvider, buildLightRpc, loadPayer } from "./connection";
 import { loadState, saveState } from "./state";
 
 const COMPUTE_UNITS = 600_000;
@@ -129,7 +126,6 @@ export async function cmdRoll(memo?: string): Promise<void> {
   const state = loadState();
   if (!state.vrfSk || !state.vrfPk) throw new Error("run `init` first");
   const sk = hexToBytes(state.vrfSk);
-  const pk = hexToBytes(state.vrfPk);
 
   const payer = loadPayer();
   const provider = buildAnchorProvider(payer);
@@ -137,12 +133,12 @@ export async function cmdRoll(memo?: string): Promise<void> {
   const program = getProgram(provider);
 
   const memoStr =
-    memo ||
-    `dice-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    memo || `dice-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const alpha = sha256(new TextEncoder().encode(memoStr));
   const { proof } = proveVRF(sk, alpha);
   const beta = vrfProofToHash(proof);
-  const rollValue = Number(BigInt("0x" + bytesToHex(beta).slice(0, 16)) % 100n) + 1; // 1..100
+  const rollValue =
+    Number(BigInt("0x" + bytesToHex(beta).slice(0, 16)) % 100n) + 1; // 1..100
 
   const { ix, commitAddress } = await buildCommitProofIx(program, rpc, {
     owner: payer.publicKey,
@@ -190,7 +186,6 @@ export async function cmdVerify(memo?: string): Promise<void> {
 
   const auth = await fetchAuthority(program, rpc, payer.publicKey, state.label);
   if (!auth) throw new Error("authority not found on chain");
-  const pk = Uint8Array.from(auth.decoded.pk);
 
   const commit = await fetchProofCommit(
     program,
@@ -200,8 +195,11 @@ export async function cmdVerify(memo?: string): Promise<void> {
   );
   if (!commit) throw new Error("commit not found on chain");
 
-  const result = verifyEndToEnd({
-    pk,
+  const result = verifyAuthorityCommitEndToEnd({
+    authority: auth.onChainAuthority,
+    expectedOwner: payer.publicKey,
+    expectedLabel: encodeLabel(state.label),
+    expectedAuthorityAddress: auth.authorityAddress,
     alpha: hexToBytes(stored.alpha),
     proof: hexToBytes(stored.proof),
     memo: targetMemo,
@@ -243,8 +241,7 @@ export async function cmdRollWithBeta(memo?: string): Promise<void> {
   const program = getProgram(provider);
 
   const memoStr =
-    memo ||
-    `dice-beta-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    memo || `dice-beta-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const alpha = sha256(new TextEncoder().encode(memoStr));
   const { proof } = proveVRF(sk, alpha);
   const beta = vrfProofToHash(proof);
@@ -291,7 +288,8 @@ export async function cmdVerifyWithBeta(memo?: string): Promise<void> {
   if (!targetMemo) throw new Error("no memo specified and no rolls in state");
 
   const stored = state.rolls.find((r) => r.memo === targetMemo);
-  if (!stored) throw new Error(`memo ${targetMemo} not found in local roll history`);
+  if (!stored)
+    throw new Error(`memo ${targetMemo} not found in local roll history`);
 
   const payer = loadPayer();
   const provider = buildAnchorProvider(payer);
@@ -300,7 +298,6 @@ export async function cmdVerifyWithBeta(memo?: string): Promise<void> {
 
   const auth = await fetchAuthority(program, rpc, payer.publicKey, state.label);
   if (!auth) throw new Error("authority not found on chain");
-  const pk = Uint8Array.from(auth.decoded.pk);
 
   const commit = await fetchProofCommitWithBeta(
     program,
@@ -310,29 +307,32 @@ export async function cmdVerifyWithBeta(memo?: string): Promise<void> {
   );
   if (!commit) throw new Error("commit-with-beta not found on chain");
 
-  const result = verifyEndToEnd({
-    pk,
+  const result = verifyAuthorityCommitEndToEnd({
+    authority: auth.onChainAuthority,
+    expectedOwner: payer.publicKey,
+    expectedLabel: encodeLabel(state.label),
+    expectedAuthorityAddress: auth.authorityAddress,
     alpha: hexToBytes(stored.alpha),
     proof: hexToBytes(stored.proof),
     memo: targetMemo,
     onChainCommit: commit.onChainCommit,
+    onChainBeta: commit.beta,
   });
-
-  // Extra invariant unique to this mode: on-chain beta must match
-  // vrfProofToHash(proof).
-  const expectedBeta = vrfProofToHash(hexToBytes(stored.proof));
-  const betaMatches = bytesToHex(commit.beta) === bytesToHex(expectedBeta);
 
   console.log("verify (pda+beta)", targetMemo);
   console.log("  ecvrf-valid:    ", result.ecvrfValid);
   console.log("  proof-matches:  ", result.proofHashMatches);
   console.log("  alpha-matches:  ", result.alphaHashMatches);
   console.log("  memo-matches:   ", result.memoHashMatches);
-  console.log("  beta-matches:   ", betaMatches);
-  console.log("  VALID:          ", result.valid && betaMatches);
+  console.log("  beta-matches:   ", result.betaMatches);
+  console.log("  VALID:          ", result.valid);
   if (!result.valid) console.log("  reasons:", result.reasons);
-  if (!betaMatches) console.log("  on-chain beta does NOT match vrfProofToHash(proof)");
-  console.log("  on-chain beta:  ", bytesToHex(commit.beta).slice(0, 32) + "...");
+  if (result.betaMatches === false)
+    console.log("  on-chain beta does NOT match vrfProofToHash(proof)");
+  console.log(
+    "  on-chain beta:  ",
+    bytesToHex(commit.beta).slice(0, 32) + "...",
+  );
 }
 
 export async function cmdRollEvent(memo?: string): Promise<void> {
@@ -342,17 +342,18 @@ export async function cmdRollEvent(memo?: string): Promise<void> {
 
   const payer = loadPayer();
   const provider = buildAnchorProvider(payer);
+  const rpc = buildLightRpc();
   const program = getProgram(provider);
 
   const memoStr =
-    memo ||
-    `dice-evt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    memo || `dice-evt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const alpha = sha256(new TextEncoder().encode(memoStr));
   const { proof } = proveVRF(sk, alpha);
   const beta = vrfProofToHash(proof);
-  const rollValue = Number(BigInt("0x" + bytesToHex(beta).slice(0, 16)) % 100n) + 1;
+  const rollValue =
+    Number(BigInt("0x" + bytesToHex(beta).slice(0, 16)) % 100n) + 1;
 
-  const ix = await buildCommitProofEventIx(program, {
+  const ix = await buildCommitProofEventIx(program, rpc, {
     owner: payer.publicKey,
     label: state.label,
     memo: memoStr,
@@ -389,7 +390,8 @@ export async function cmdVerifyEvent(memo?: string): Promise<void> {
   if (!targetMemo) throw new Error("no memo specified and no rolls in state");
 
   const stored = state.rolls.find((r) => r.memo === targetMemo);
-  if (!stored) throw new Error(`memo ${targetMemo} not found in local roll history`);
+  if (!stored)
+    throw new Error(`memo ${targetMemo} not found in local roll history`);
 
   const payer = loadPayer();
   const provider = buildAnchorProvider(payer);
@@ -398,7 +400,6 @@ export async function cmdVerifyEvent(memo?: string): Promise<void> {
 
   const auth = await fetchAuthority(program, rpc, payer.publicKey, state.label);
   if (!auth) throw new Error("authority not found on chain");
-  const pk = Uint8Array.from(auth.decoded.pk);
 
   const events = await fetchProofCommitEvents(
     program,
@@ -407,7 +408,8 @@ export async function cmdVerifyEvent(memo?: string): Promise<void> {
     state.label,
     targetMemo,
   );
-  if (events.length === 0) throw new Error("no events found on chain for this memo");
+  if (events.length === 0)
+    throw new Error("no events found on chain for this memo");
 
   const picked = pickCanonicalCommit(
     events.map((e) => e.onChainCommit),
@@ -417,15 +419,22 @@ export async function cmdVerifyEvent(memo?: string): Promise<void> {
   console.log("verify (event)", targetMemo);
   console.log("  events found:   ", events.length);
   if (picked.duplicateMemoEvents) {
-    console.log("  duplicate-memo events present — selecting canonical via ECVRF math");
+    console.log(
+      "  duplicate-memo events present — selecting canonical via ECVRF math",
+    );
   }
   if (!picked.canonical) {
-    console.log("  no canonical commit matches the local proof — verification fails");
+    console.log(
+      "  no canonical commit matches the local proof — verification fails",
+    );
     process.exit(1);
   }
 
-  const result = verifyEndToEnd({
-    pk,
+  const result = verifyAuthorityCommitEndToEnd({
+    authority: auth.onChainAuthority,
+    expectedOwner: payer.publicKey,
+    expectedLabel: encodeLabel(state.label),
+    expectedAuthorityAddress: auth.authorityAddress,
     alpha: hexToBytes(stored.alpha),
     proof: hexToBytes(stored.proof),
     memo: targetMemo,
@@ -445,7 +454,8 @@ export async function cmdVerifyEvent(memo?: string): Promise<void> {
 }
 
 export async function cmdSimulateEvent(n: number): Promise<void> {
-  if (!Number.isFinite(n) || n < 1) throw new Error("simulate count must be >= 1");
+  if (!Number.isFinite(n) || n < 1)
+    throw new Error("simulate count must be >= 1");
   let passed = 0;
   let failed = 0;
   for (let i = 0; i < n; i++) {
@@ -500,7 +510,8 @@ export async function cmdSimulate(n: number): Promise<void> {
  */
 export async function cmdCost(n: number, solUsd: number): Promise<void> {
   if (!Number.isFinite(n) || n < 1) throw new Error("cost count must be >= 1");
-  if (!Number.isFinite(solUsd) || solUsd <= 0) throw new Error("--sol-usd must be > 0");
+  if (!Number.isFinite(solUsd) || solUsd <= 0)
+    throw new Error("--sol-usd must be > 0");
 
   const state = loadState();
   if (!state.vrfSk || !state.vrfPk) throw new Error("run `init` first");
@@ -516,7 +527,11 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
   console.log("cost-measure config:");
   console.log("  rolls per mode:    ", n);
   console.log("  payer:             ", payer.publicKey.toBase58());
-  console.log("  start balance:     ", (startBal / LAMPORTS_PER_SOL).toFixed(9), "SOL");
+  console.log(
+    "  start balance:     ",
+    (startBal / LAMPORTS_PER_SOL).toFixed(9),
+    "SOL",
+  );
   console.log("  SOL/USD reference: ", solUsd);
   console.log("");
 
@@ -545,7 +560,10 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
       pdaOk++;
     } catch (err) {
       pdaFail++;
-      console.error(`  pda iter ${i} failed:`, err instanceof Error ? err.message : err);
+      console.error(
+        `  pda iter ${i} failed:`,
+        err instanceof Error ? err.message : err,
+      );
     }
   }
   const pdaEnd = await connection.getBalance(payer.publicKey);
@@ -579,7 +597,10 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
       betaOk++;
     } catch (err) {
       betaFail++;
-      console.error(`  beta iter ${i} failed:`, err instanceof Error ? err.message : err);
+      console.error(
+        `  beta iter ${i} failed:`,
+        err instanceof Error ? err.message : err,
+      );
     }
   }
   const betaEnd = await connection.getBalance(payer.publicKey);
@@ -597,7 +618,7 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
     const alpha = sha256(new TextEncoder().encode(memo));
     const { proof } = proveVRF(sk, alpha);
     try {
-      const ix = await buildCommitProofEventIx(program, {
+      const ix = await buildCommitProofEventIx(program, rpc, {
         owner: payer.publicKey,
         label: state.label,
         memo,
@@ -611,7 +632,10 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
       evtOk++;
     } catch (err) {
       evtFail++;
-      console.error(`  evt iter ${i} failed:`, err instanceof Error ? err.message : err);
+      console.error(
+        `  evt iter ${i} failed:`,
+        err instanceof Error ? err.message : err,
+      );
     }
   }
   const eventEnd = await connection.getBalance(payer.publicKey);
@@ -634,34 +658,66 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
   console.log("");
   console.log("PDA mode (commit_proof):");
   console.log(`  rolls:               ${pdaOk} ok / ${pdaFail} fail`);
-  console.log(`  total spent:         ${pdaSol.toFixed(9)} SOL  ($${(pdaSol * solUsd).toFixed(4)})`);
-  console.log(`  per-call:            ${pdaPerCallSol.toFixed(9)} SOL  ($${pdaPerCallUsd.toFixed(6)})`);
-  console.log(`  extrapolated 100k:   ${(pdaPerCallSol * 100_000).toFixed(4)} SOL  ($${(pdaPerCallUsd * 100_000).toFixed(2)})`);
-  console.log(`  wall time:           ${(pdaDurationMs / 1000).toFixed(1)}s (${pdaOk > 0 ? (pdaDurationMs / pdaOk).toFixed(0) : "—"}ms/call)`);
+  console.log(
+    `  total spent:         ${pdaSol.toFixed(9)} SOL  ($${(pdaSol * solUsd).toFixed(4)})`,
+  );
+  console.log(
+    `  per-call:            ${pdaPerCallSol.toFixed(9)} SOL  ($${pdaPerCallUsd.toFixed(6)})`,
+  );
+  console.log(
+    `  extrapolated 100k:   ${(pdaPerCallSol * 100_000).toFixed(4)} SOL  ($${(pdaPerCallUsd * 100_000).toFixed(2)})`,
+  );
+  console.log(
+    `  wall time:           ${(pdaDurationMs / 1000).toFixed(1)}s (${pdaOk > 0 ? (pdaDurationMs / pdaOk).toFixed(0) : "—"}ms/call)`,
+  );
   console.log("");
   console.log("PDA+beta mode (commit_proof_with_beta):");
   console.log(`  rolls:               ${betaOk} ok / ${betaFail} fail`);
-  console.log(`  total spent:         ${betaSol.toFixed(9)} SOL  ($${(betaSol * solUsd).toFixed(4)})`);
-  console.log(`  per-call:            ${betaPerCallSol.toFixed(9)} SOL  ($${betaPerCallUsd.toFixed(6)})`);
-  console.log(`  extrapolated 100k:   ${(betaPerCallSol * 100_000).toFixed(4)} SOL  ($${(betaPerCallUsd * 100_000).toFixed(2)})`);
-  console.log(`  wall time:           ${(betaDurationMs / 1000).toFixed(1)}s (${betaOk > 0 ? (betaDurationMs / betaOk).toFixed(0) : "—"}ms/call)`);
+  console.log(
+    `  total spent:         ${betaSol.toFixed(9)} SOL  ($${(betaSol * solUsd).toFixed(4)})`,
+  );
+  console.log(
+    `  per-call:            ${betaPerCallSol.toFixed(9)} SOL  ($${betaPerCallUsd.toFixed(6)})`,
+  );
+  console.log(
+    `  extrapolated 100k:   ${(betaPerCallSol * 100_000).toFixed(4)} SOL  ($${(betaPerCallUsd * 100_000).toFixed(2)})`,
+  );
+  console.log(
+    `  wall time:           ${(betaDurationMs / 1000).toFixed(1)}s (${betaOk > 0 ? (betaDurationMs / betaOk).toFixed(0) : "—"}ms/call)`,
+  );
   console.log("");
   console.log("Event mode (commit_proof_event):");
   console.log(`  rolls:               ${evtOk} ok / ${evtFail} fail`);
-  console.log(`  total spent:         ${evtSol.toFixed(9)} SOL  ($${(evtSol * solUsd).toFixed(4)})`);
-  console.log(`  per-call:            ${evtPerCallSol.toFixed(9)} SOL  ($${evtPerCallUsd.toFixed(6)})`);
-  console.log(`  extrapolated 100k:   ${(evtPerCallSol * 100_000).toFixed(4)} SOL  ($${(evtPerCallUsd * 100_000).toFixed(2)})`);
-  console.log(`  wall time:           ${(eventDurationMs / 1000).toFixed(1)}s (${evtOk > 0 ? (eventDurationMs / evtOk).toFixed(0) : "—"}ms/call)`);
+  console.log(
+    `  total spent:         ${evtSol.toFixed(9)} SOL  ($${(evtSol * solUsd).toFixed(4)})`,
+  );
+  console.log(
+    `  per-call:            ${evtPerCallSol.toFixed(9)} SOL  ($${evtPerCallUsd.toFixed(6)})`,
+  );
+  console.log(
+    `  extrapolated 100k:   ${(evtPerCallSol * 100_000).toFixed(4)} SOL  ($${(evtPerCallUsd * 100_000).toFixed(2)})`,
+  );
+  console.log(
+    `  wall time:           ${(eventDurationMs / 1000).toFixed(1)}s (${evtOk > 0 ? (eventDurationMs / evtOk).toFixed(0) : "—"}ms/call)`,
+  );
   console.log("");
   if (pdaPerCallSol > 0 && evtPerCallSol > 0) {
-    console.log(`Event mode is ${(pdaPerCallSol / evtPerCallSol).toFixed(2)}x cheaper than plain PDA per call.`);
+    console.log(
+      `Event mode is ${(pdaPerCallSol / evtPerCallSol).toFixed(2)}x cheaper than plain PDA per call.`,
+    );
   }
   if (pdaPerCallSol > 0 && betaPerCallSol > 0) {
-    console.log(`PDA+beta vs PDA: ${(betaPerCallSol / pdaPerCallSol).toFixed(2)}x cost (beta adds 64 bytes per leaf).`);
+    console.log(
+      `PDA+beta vs PDA: ${(betaPerCallSol / pdaPerCallSol).toFixed(2)}x cost (beta adds 64 bytes per leaf).`,
+    );
   }
   console.log("");
-  console.log("NOTE: prices include base tx fee, priority fees, and Light Protocol");
-  console.log("tree slot costs. Real production cost depends on the priority-fee");
+  console.log(
+    "NOTE: prices include base tx fee, priority fees, and Light Protocol",
+  );
+  console.log(
+    "tree slot costs. Real production cost depends on the priority-fee",
+  );
   console.log("market at execution time and may differ.");
 
   if (pdaFail > 0 || betaFail > 0 || evtFail > 0) process.exit(1);
@@ -669,7 +725,10 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
 
 export function cmdStatus(): void {
   const state = loadState();
-  console.log("state file:", require.resolve("./state").replace("dist/", "src/"));
+  console.log(
+    "state file:",
+    require.resolve("./state").replace("dist/", "src/"),
+  );
   console.log("label:           ", state.label);
   console.log("vrf pk:          ", state.vrfPk || "(not initialized)");
   console.log("owner:           ", state.ownerPubkeyBase58 || "(none)");
