@@ -100,11 +100,10 @@
     {
       "name": "commit_proof_event",
       "docs": [
-        "Event-mode commit: emits a `VrfProofCommitted` log instead of creating",
-        "a compressed PDA. ~5x cheaper than `commit_proof`. No on-chain replay",
-        "protection — verifiers must detect duplicate memos and pick the proof",
-        "that satisfies the VRF math (which is deterministic, so the real one",
-        "is always recoverable)."
+        "Event-mode commit: proves the frozen authority read-only and emits a",
+        "`VrfProofCommitted` log instead of creating a compressed PDA. No",
+        "on-chain replay protection — verifiers must detect duplicate memos and",
+        "pick the proof that satisfies the VRF math."
       ],
       "discriminator": [
         169,
@@ -124,6 +123,30 @@
         }
       ],
       "args": [
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "authority_account_meta",
+          "type": {
+            "defined": {
+              "name": "CompressedAccountMetaReadOnly"
+            }
+          }
+        },
+        {
+          "name": "current_authority",
+          "type": {
+            "defined": {
+              "name": "VrfAuthority"
+            }
+          }
+        },
         {
           "name": "label",
           "type": {
@@ -169,8 +192,8 @@
         "(split as `beta_lo` + `beta_hi`) in the new compressed PDA. Use this",
         "when another Solana program needs to read the random value directly",
         "via a Light SDK CPI, without going through an off-chain fetch of the",
-        "proof bytes. Stored at a different seed prefix so it doesn't collide",
-        "with `commit_proof` records."
+        "proof bytes. Uses the same seed prefix as `commit_proof` so one memo",
+        "can only be committed in one registry mode."
       ],
       "discriminator": [
         199,
@@ -513,26 +536,41 @@
     },
     {
       "code": 6002,
+      "name": "AuthorityNotFrozen",
+      "msg": "Authority must be frozen before committing proofs"
+    },
+    {
+      "code": 6003,
       "name": "AuthorityRevoked",
       "msg": "Authority is revoked"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "NotOwner",
       "msg": "Signer is not the authority owner"
     },
     {
-      "code": 6004,
+      "code": 6005,
+      "name": "AuthorityLabelMismatch",
+      "msg": "Authority label does not match the requested label"
+    },
+    {
+      "code": 6006,
+      "name": "AuthorityAddressMismatch",
+      "msg": "Authority address does not match owner and label seeds"
+    },
+    {
+      "code": 6007,
       "name": "LabelTooLong",
       "msg": "Label exceeds 32 bytes"
     },
     {
-      "code": 6005,
+      "code": 6008,
       "name": "UnsupportedSuite",
       "msg": "Unsupported VRF suite identifier"
     },
     {
-      "code": 6006,
+      "code": 6009,
       "name": "InvalidPublicKeyLength",
       "msg": "Invalid public key length"
     }
@@ -830,10 +868,10 @@
     {
       "name": "VrfProofCommitWithBeta",
       "docs": [
-        "Same shape as `VrfProofCommit` but also stores the 64-byte `beta` output",
-        "of `vrfProofToHash`. With `beta` on-chain, other Solana programs can read",
-        "the random value directly via a Light SDK CPI without needing the original",
-        "proof bytes off-chain.",
+        "Same address namespace as `VrfProofCommit`, but also stores the 64-byte",
+        "`beta` output of `vrfProofToHash`. With `beta` on-chain, other Solana",
+        "programs can read the random value directly via a Light SDK CPI without",
+        "needing the original proof bytes off-chain.",
         "",
         "Trust model is identical to `VrfProofCommit`: anyone can later audit that",
         "the stored `beta` matches `vrfProofToHash(proof)` and that the proof",
@@ -841,7 +879,7 @@
         "the operator (whose pk is frozen in `VrfAuthority`) populated it",
         "correctly.",
         "",
-        "Seeds: [\"vrf_proof_b\", authority_pda_pubkey, memo_hash]"
+        "Seeds: [\"vrf_proof\", authority_pda_pubkey, memo_hash]"
       ],
       "type": {
         "kind": "struct",
@@ -922,8 +960,8 @@
         "Replay protection is moved from the chain to the verifier: a malicious",
         "operator could emit two events with the same `memo_hash` and different",
         "`proof_hash`es. The VRF proof is deterministic given the pk + alpha, so at",
-        "most one of those would pass `verifyEndToEnd` — verifiers must scan for",
-        "duplicates and reject ambiguous memos."
+        "most one of those would pass ECVRF verification — verifiers must scan for",
+        "duplicates and pick the canonical commit."
       ],
       "type": {
         "kind": "struct",

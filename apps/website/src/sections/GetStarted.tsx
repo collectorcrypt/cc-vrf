@@ -28,9 +28,8 @@ export function GetStarted() {
         <h2 className="section-title">Five lines to verifiable randomness.</h2>
         <p className="max-w-3xl text-ink-300">
           The pure-JS ECVRF library is independently useful even without the
-          on-chain pieces. Drop it in anywhere you need RFC 9381 randomness;
-          add the SDK + program when you&rsquo;re ready to commit proofs to
-          chain.
+          on-chain pieces. Drop it in anywhere you need RFC 9381 randomness; add
+          the SDK + program when you&rsquo;re ready to commit proofs to chain.
         </p>
       </header>
 
@@ -68,7 +67,8 @@ export function GetStarted() {
               <dd>devnet</dd>
               <dt>idl + types</dt>
               <dd>
-                included in <code className="font-mono">@collectorcrypt/vrf-client</code>
+                included in{" "}
+                <code className="font-mono">@collectorcrypt/vrf-client</code>
               </dd>
             </dl>
           </div>
@@ -78,21 +78,21 @@ export function GetStarted() {
               <li>
                 <code className="font-mono text-ink-100">
                   @collectorcrypt/ecvrf
-                </code>
-                {" "}&mdash; RFC 9381 Ed25519 ECVRF (zero Solana deps).
+                </code>{" "}
+                &mdash; RFC 9381 Ed25519 ECVRF (zero Solana deps).
               </li>
               <li>
                 <code className="font-mono text-ink-100">
                   @collectorcrypt/vrf-client
-                </code>
-                {" "}&mdash; on-chain SDK + verifyEndToEnd.
+                </code>{" "}
+                &mdash; on-chain SDK + full verification helpers.
               </li>
             </ul>
           </div>
           <div className="card flex flex-col gap-2">
             <h3 className="subsection-title">Source &amp; reference demo</h3>
             <p className="text-sm text-ink-300">
-              Full repo, demo CLI, RFC 9381 fixture generator, and 47-test
+              Full repo, demo CLI, RFC 9381 fixture generator, and 50-test
               cryptography suite live on GitHub.
             </p>
             <a className="btn-primary self-start" href={GITHUB_URL}>

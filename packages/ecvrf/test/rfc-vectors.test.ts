@@ -1,6 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import * as ed from "@noble/ed25519";
 import {
+  bigIntToBytesLE,
   bytesToHex,
+  concatBytes,
   hexToBytes,
   generateKeyPair,
   proveVRF,
@@ -9,6 +12,8 @@ import {
   vrfProofToHash,
   PROOF_LEN,
 } from "../src";
+import { challengeGeneration } from "../src/challenge";
+import { encodeToCurveTAI } from "../src/hashToCurve";
 
 /**
  * The (sk, pk) pairs below come directly from RFC 8032 §7.1 — these are the
@@ -170,5 +175,34 @@ describe("ECVRF negative cases", () => {
     );
     t.set(qLE, 48);
     expect(verifyVRF(pk, alpha, t)).toBe(false);
+  });
+
+  it("rejects forged proofs under an identity public key", () => {
+    const identityPk = ed.Point.ZERO.toBytes();
+    const forgedAlpha = new TextEncoder().encode("identity-pk-forgery");
+    const H = encodeToCurveTAI(identityPk, forgedAlpha);
+    const c = challengeGeneration(
+      ed.Point.ZERO,
+      H,
+      ed.Point.ZERO,
+      ed.Point.ZERO,
+      ed.Point.ZERO,
+    );
+    const forgedProof = concatBytes(
+      ed.Point.ZERO.toBytes(),
+      bigIntToBytesLE(c, 16),
+      new Uint8Array(32),
+    );
+    expect(verifyVRF(identityPk, forgedAlpha, forgedProof)).toBe(false);
+  });
+
+  it("rejects proof_to_hash for identity Gamma", () => {
+    const t = new Uint8Array(proof);
+    t.set(ed.Point.ZERO.toBytes(), 0);
+    expect(() => vrfProofToHash(t)).toThrow(/Gamma/);
+  });
+
+  it("rejects invalid hex strings", () => {
+    expect(() => hexToBytes("zz")).toThrow(/non-hex/);
   });
 });

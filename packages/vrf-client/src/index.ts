@@ -17,11 +17,7 @@ export {
   hexToBytes,
 } from "@collectorcrypt/ecvrf";
 
-export {
-  CC_VRF_PROGRAM_ID,
-  SUITE_EDWARDS25519_SHA512_TAI,
-  SUITE_EDWARDS25519_SHA512_ELL2,
-} from "./constants";
+export { CC_VRF_PROGRAM_ID, SUITE_EDWARDS25519_SHA512_TAI } from "./constants";
 
 export {
   deriveAuthorityAddress,
@@ -37,6 +33,7 @@ export {
   forceLightV2,
   buildCreateContext,
   buildCommitProofContext,
+  buildReadOnlyAuthorityContext,
   buildMutateContext,
 } from "./light";
 
@@ -68,11 +65,15 @@ export type {
 
 export {
   verifyEndToEnd,
+  verifyAuthorityCommitEndToEnd,
   pickCanonicalCommit,
 } from "./verifyEndToEnd";
 
 export type {
+  OnChainAuthority,
   OnChainCommit,
+  VerifyAuthorityCommitEndToEndInput,
+  VerifyAuthorityCommitEndToEndResult,
   VerifyEndToEndInput,
   VerifyEndToEndResult,
   PickCanonicalResult,

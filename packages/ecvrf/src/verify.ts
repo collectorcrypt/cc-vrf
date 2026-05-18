@@ -45,6 +45,8 @@ export function verifyVRF(
   } catch {
     return false;
   }
+  if (Y.isSmallOrder() || !Y.isTorsionFree()) return false;
+  if (Gamma.isSmallOrder() || !Gamma.isTorsionFree()) return false;
 
   const H = encodeToCurveTAI(pk, alpha);
 

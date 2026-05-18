@@ -11,6 +11,7 @@ import {
   CompressedAccountWithMerkleContext,
   Rpc,
 } from "@lightprotocol/stateless.js";
+import { verifyVRF, vrfProofToHash } from "@collectorcrypt/ecvrf";
 
 import {
   alphaHash as alphaHashFn,
@@ -21,13 +22,15 @@ import {
   memoHash as memoHashFn,
   proofHash as proofHashFn,
 } from "./addresses";
+import { SUITE_EDWARDS25519_SHA512_TAI } from "./constants";
 import {
   buildCommitProofContext,
   buildCreateContext,
   buildMutateContext,
+  buildReadOnlyAuthorityContext,
   forceLightV2,
 } from "./light";
-import { OnChainCommit } from "./verifyEndToEnd";
+import { OnChainAuthority, OnChainCommit } from "./verifyEndToEnd";
 
 /**
  * Decode a VrfAuthority record from a fetched compressed-account row.
@@ -96,19 +99,34 @@ export async function fetchAuthority(
   authorityAddress: PublicKey;
   account: CompressedAccountWithMerkleContext;
   decoded: ReturnType<typeof decodeAuthority>;
+  onChainAuthority: OnChainAuthority;
 } | null> {
   forceLightV2();
-  const labelBytes =
-    typeof label === "string" ? encodeLabel(label) : label;
+  const labelBytes = typeof label === "string" ? encodeLabel(label) : label;
   const authorityAddress = deriveAuthorityAddress(
     owner,
     labelBytes,
     program.programId,
   );
-  const account = await rpc.getCompressedAccount(bn(authorityAddress.toBytes()));
+  const account = await rpc.getCompressedAccount(
+    bn(authorityAddress.toBytes()),
+  );
   if (!account) return null;
   const decoded = decodeAuthority(program, Uint8Array.from(account.data!.data));
-  return { authorityAddress, account, decoded };
+  return {
+    authorityAddress,
+    account,
+    decoded,
+    onChainAuthority: {
+      authorityAddress,
+      owner: decoded.owner,
+      pk: Uint8Array.from(decoded.pk),
+      suite: decoded.suite,
+      frozen: decoded.frozen,
+      revoked: decoded.revoked,
+      label: Uint8Array.from(decoded.label),
+    },
+  };
 }
 
 /**
@@ -135,12 +153,16 @@ export async function fetchProofCommit(
   );
   const account = await rpc.getCompressedAccount(bn(commitAddress.toBytes()));
   if (!account) return null;
-  const decoded = decodeProofCommit(program, Uint8Array.from(account.data!.data));
+  const decoded = decodeProofCommit(
+    program,
+    Uint8Array.from(account.data!.data),
+  );
   return {
     commitAddress,
     account,
     decoded,
     onChainCommit: {
+      authority: decoded.authority,
       memoHash: Uint8Array.from(decoded.memoHash),
       proofHash: Uint8Array.from(decoded.proofHash),
       alphaHash: Uint8Array.from(decoded.alphaHash),
@@ -168,6 +190,11 @@ export async function buildInitAuthorityIx(
   if (input.pk.length !== 32) {
     throw new Error("pk must be 32 bytes");
   }
+  if (input.suite !== SUITE_EDWARDS25519_SHA512_TAI) {
+    throw new Error(
+      "only ECVRF-EDWARDS25519-SHA512-TAI suite 0x03 is supported",
+    );
+  }
   const labelBytes =
     typeof input.label === "string" ? encodeLabel(input.label) : input.label;
   if (labelBytes.length !== 32) {
@@ -179,7 +206,11 @@ export async function buildInitAuthorityIx(
     program.programId,
   );
 
-  const ctx = await buildCreateContext(rpc, program.programId, authorityAddress);
+  const ctx = await buildCreateContext(
+    rpc,
+    program.programId,
+    authorityAddress,
+  );
 
   const ix = await program.methods
     // @ts-ignore: Anchor IDL types are dynamic at this layer
@@ -252,6 +283,29 @@ export interface CommitProofInput {
   proof: Uint8Array;
 }
 
+type FetchedAuthority = NonNullable<Awaited<ReturnType<typeof fetchAuthority>>>;
+
+function assertAuthorityCanCommit(
+  auth: FetchedAuthority | null,
+): asserts auth is FetchedAuthority {
+  if (!auth) throw new Error("authority not found");
+  if (auth.decoded.suite !== SUITE_EDWARDS25519_SHA512_TAI) {
+    throw new Error("authority suite is not supported");
+  }
+  if (!auth.decoded.frozen) throw new Error("authority is not frozen");
+  if (auth.decoded.revoked) throw new Error("authority is revoked");
+}
+
+function assertProofMatchesAuthority(
+  auth: FetchedAuthority,
+  input: CommitProofInput,
+) {
+  const pk = Uint8Array.from(auth.decoded.pk);
+  if (!verifyVRF(pk, input.alpha, input.proof)) {
+    throw new Error("proof does not verify against authority pk and alpha");
+  }
+}
+
 /**
  * Build the commit_proof instruction. The authority is looked up via
  * (owner, label) — must already exist on chain. memo/alpha/proof are hashed
@@ -267,8 +321,8 @@ export async function buildCommitProofIx(
   }
 
   const auth = await fetchAuthority(program, rpc, input.owner, input.label);
-  if (!auth) throw new Error("authority not found");
-  if (auth.decoded.revoked) throw new Error("authority is revoked");
+  assertAuthorityCanCommit(auth);
+  assertProofMatchesAuthority(auth, input);
 
   const mh = memoHashFn(input.memo);
   const commitAddress = deriveProofCommitAddress(
@@ -307,20 +361,17 @@ export async function buildCommitProofIx(
 }
 
 /**
- * Build the commit_proof_event instruction (event mode). Skips the Light CPI
- * entirely — the signer is taken as the implicit authority owner, and the
- * commitment is emitted as a Solana log event rather than written to a
- * compressed PDA.
+ * Build the commit_proof_event instruction (event mode). Proves the authority
+ * read-only, requires it to be frozen and unrevoked, and emits a Solana log
+ * event rather than writing a compressed PDA.
  *
- * Roughly ~5x cheaper than `buildCommitProofIx` because there's no validity
- * proof, no address-tree slot, no state-tree slot, and no read-only authority
- * load. The trade-off is that the chain doesn't enforce one-commit-per-memo;
- * verifiers must scan for duplicate `memo_hash` events and pick the one
- * where ECVRF math passes (which is always exactly one, since proofs are
- * deterministic).
+ * The trade-off is that the chain doesn't enforce one-commit-per-memo;
+ * verifiers must scan for duplicate `memo_hash` events and pick the one where
+ * ECVRF math passes.
  */
 export async function buildCommitProofEventIx(
   program: Program,
+  rpc: Rpc,
   input: CommitProofInput,
 ): Promise<TransactionInstruction> {
   if (input.proof.length !== 80) {
@@ -331,17 +382,30 @@ export async function buildCommitProofEventIx(
   if (labelBytes.length !== 32) {
     throw new Error("label must encode to exactly 32 bytes");
   }
+  const auth = await fetchAuthority(program, rpc, input.owner, labelBytes);
+  assertAuthorityCanCommit(auth);
+  assertProofMatchesAuthority(auth, input);
+
+  const ctx = await buildReadOnlyAuthorityContext(
+    rpc,
+    program.programId,
+    auth.account,
+  );
   const mh = memoHashFn(input.memo);
 
   const ix = await program.methods
     // @ts-ignore: Anchor IDL types are dynamic at this layer
     .commitProofEvent(
+      ctx.proof,
+      ctx.authorityReadOnlyMeta,
+      auth.decoded,
       Array.from(labelBytes),
       Array.from(mh),
       Array.from(proofHashFn(input.proof)),
       Array.from(alphaHashFn(input.alpha)),
     )
     .accounts({ owner: input.owner } as never)
+    .remainingAccounts(ctx.remainingAccountMetas)
     .instruction();
 
   return ix;
@@ -351,7 +415,7 @@ export async function buildCommitProofEventIx(
  * One row decoded from a `VrfProofCommitted` log event. `txSignature` is the
  * Solana tx the event was emitted in; `slot` is the slot that tx confirmed in.
  *
- * `onChainCommit` is the same shape `verifyEndToEnd` expects, so the same
+ * `onChainCommit` is the same shape the verifier helpers expect, so the same
  * verification path works for PDA-mode and event-mode commits.
  */
 export interface ProofCommitEvent {
@@ -371,7 +435,7 @@ export interface ProofCommitEvent {
  * not enforce uniqueness in event mode. A safe verifier:
  *
  *   1. Collects all matches for the requested memo.
- *   2. Runs `verifyEndToEnd` against each candidate proof.
+ *   2. Runs `verifyAuthorityCommitEndToEnd` against each candidate proof.
  *   3. Accepts the unique row where the ECVRF math passes.
  *
  * Because ECVRF proofs are deterministic for a fixed (pk, alpha), at most
@@ -380,8 +444,9 @@ export interface ProofCommitEvent {
  * that picks "the latest event" without running ECVRF can be misled, which is
  * the only soundness gap relative to the PDA path.
  *
- * `connection` and `programId` are passed in explicitly so this works
- * against a plain Solana RPC — no Photon dependency.
+ * `connection` and `programId` are passed in explicitly so log scanning works
+ * against a plain Solana RPC. Fetching compressed authority state still needs
+ * a Photon-capable RPC unless the verifier already has that state.
  *
  * `limit` caps how many recent signatures to scan (default 1000); pagination
  * happens automatically via `getSignaturesForAddress`'s `before` cursor.
@@ -394,48 +459,68 @@ export async function fetchProofCommitEvents(
   memo: string | Uint8Array,
   options: { limit?: number } = {},
 ): Promise<ProofCommitEvent[]> {
-  const labelBytes =
-    typeof label === "string" ? encodeLabel(label) : label;
+  const labelBytes = typeof label === "string" ? encodeLabel(label) : label;
   const targetMemoHash = memoHashFn(memo);
 
-  const limit = options.limit ?? 1000;
-  const sigInfos = await connection.getSignaturesForAddress(owner, { limit });
-
-  const parser = new EventParser(program.programId, new BorshCoder(program.idl));
+  const parser = new EventParser(
+    program.programId,
+    new BorshCoder(program.idl),
+  );
   const out: ProofCommitEvent[] = [];
 
-  for (const sigInfo of sigInfos) {
-    if (sigInfo.err) continue;
-    const tx = await connection.getTransaction(sigInfo.signature, {
-      commitment: "confirmed",
-      maxSupportedTransactionVersion: 0,
+  const limit = options.limit ?? 1000;
+  let before: string | undefined;
+  let scanned = 0;
+  while (scanned < limit) {
+    const pageLimit = Math.min(1000, limit - scanned);
+    const sigInfos = await connection.getSignaturesForAddress(owner, {
+      limit: pageLimit,
+      before,
     });
-    if (!tx?.meta?.logMessages) continue;
+    if (sigInfos.length === 0) break;
+    scanned += sigInfos.length;
+    before = sigInfos[sigInfos.length - 1].signature;
 
-    for (const ev of parser.parseLogs(tx.meta.logMessages, false)) {
-      if (ev.name !== "VrfProofCommitted" && ev.name !== "vrfProofCommitted") continue;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = ev.data as any;
-      const eventOwner: PublicKey = data.owner;
-      const eventLabel: Uint8Array = Uint8Array.from(data.label);
-      const eventMemoHash: Uint8Array = Uint8Array.from(data.memoHash);
-
-      if (!eventOwner.equals(owner)) continue;
-      if (!bytesEqual(eventLabel, labelBytes)) continue;
-      if (!bytesEqual(eventMemoHash, targetMemoHash)) continue;
-
-      out.push({
-        owner: eventOwner,
-        label: eventLabel,
-        txSignature: sigInfo.signature,
-        slot: tx.slot,
-        onChainCommit: {
-          memoHash: eventMemoHash,
-          proofHash: Uint8Array.from(data.proofHash),
-          alphaHash: Uint8Array.from(data.alphaHash),
-          committedSlot: BigInt(data.committedSlot.toString()),
-        },
+    for (const sigInfo of sigInfos) {
+      if (sigInfo.err) continue;
+      const tx = await connection.getTransaction(sigInfo.signature, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
       });
+      if (!tx?.meta?.logMessages) continue;
+
+      for (const ev of parser.parseLogs(tx.meta.logMessages, false)) {
+        if (ev.name !== "VrfProofCommitted" && ev.name !== "vrfProofCommitted")
+          continue;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data = ev.data as any;
+        const eventOwner: PublicKey = data.owner;
+        const eventLabel: Uint8Array = Uint8Array.from(data.label);
+        const eventMemoHash: Uint8Array = Uint8Array.from(data.memoHash);
+
+        if (!eventOwner.equals(owner)) continue;
+        if (!bytesEqual(eventLabel, labelBytes)) continue;
+        if (!bytesEqual(eventMemoHash, targetMemoHash)) continue;
+
+        const authority = deriveAuthorityAddress(
+          eventOwner,
+          eventLabel,
+          program.programId,
+        );
+        out.push({
+          owner: eventOwner,
+          label: eventLabel,
+          txSignature: sigInfo.signature,
+          slot: tx.slot,
+          onChainCommit: {
+            authority,
+            memoHash: eventMemoHash,
+            proofHash: Uint8Array.from(data.proofHash),
+            alphaHash: Uint8Array.from(data.alphaHash),
+            committedSlot: BigInt(data.committedSlot.toString()),
+          },
+        });
+      }
     }
   }
 
@@ -456,8 +541,8 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
  * (output of vrfProofToHash) in the new compressed PDA so other Solana
  * programs can read it via a Light SDK CPI.
  *
- * Stored at a different seed prefix than regular commits — a single
- * authority can use both modes for different memos without collision.
+ * Stored at the same seed prefix as regular commits, so one authority+memo can
+ * only use one registry mode.
  */
 export async function buildCommitProofWithBetaIx(
   program: Program,
@@ -472,8 +557,11 @@ export async function buildCommitProofWithBetaIx(
   }
 
   const auth = await fetchAuthority(program, rpc, input.owner, input.label);
-  if (!auth) throw new Error("authority not found");
-  if (auth.decoded.revoked) throw new Error("authority is revoked");
+  assertAuthorityCanCommit(auth);
+  assertProofMatchesAuthority(auth, input);
+  if (!bytesEqual(input.beta, vrfProofToHash(input.proof))) {
+    throw new Error("beta does not match vrfProofToHash(proof)");
+  }
 
   const mh = memoHashFn(input.memo);
   const commitAddress = deriveProofCommitWithBetaAddress(
@@ -552,6 +640,7 @@ export async function fetchProofCommitWithBeta(
     decoded,
     beta,
     onChainCommit: {
+      authority: decoded.authority,
       memoHash: Uint8Array.from(decoded.memoHash),
       proofHash: Uint8Array.from(decoded.proofHash),
       alphaHash: Uint8Array.from(decoded.alphaHash),

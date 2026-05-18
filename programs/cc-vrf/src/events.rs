@@ -10,8 +10,8 @@ use anchor_lang::prelude::*;
 /// Replay protection is moved from the chain to the verifier: a malicious
 /// operator could emit two events with the same `memo_hash` and different
 /// `proof_hash`es. The VRF proof is deterministic given the pk + alpha, so at
-/// most one of those would pass `verifyEndToEnd` — verifiers must scan for
-/// duplicates and reject ambiguous memos.
+/// most one of those would pass ECVRF verification — verifiers must scan for
+/// duplicates and pick the canonical commit.
 #[event]
 pub struct VrfProofCommitted {
     /// The signer who emitted this commit. Implicitly the authority owner —

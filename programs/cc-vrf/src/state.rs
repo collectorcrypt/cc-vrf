@@ -3,8 +3,6 @@ use light_sdk::{LightDiscriminator, LightHasher};
 
 /// IANA suite identifier for ECVRF-EDWARDS25519-SHA512-TAI per RFC 9381 §7.5.
 pub const SUITE_EDWARDS25519_SHA512_TAI: u8 = 0x03;
-/// IANA suite identifier for ECVRF-EDWARDS25519-SHA512-ELL2.
-pub const SUITE_EDWARDS25519_SHA512_ELL2: u8 = 0x04;
 
 /// Per-operator authority. Locks a published VRF public key on-chain so the
 /// operator cannot silently rotate to a different secret key. The
@@ -62,10 +60,10 @@ impl VrfProofCommit {
     pub const SEED_PREFIX: &'static [u8] = b"vrf_proof";
 }
 
-/// Same shape as `VrfProofCommit` but also stores the 64-byte `beta` output
-/// of `vrfProofToHash`. With `beta` on-chain, other Solana programs can read
-/// the random value directly via a Light SDK CPI without needing the original
-/// proof bytes off-chain.
+/// Same address namespace as `VrfProofCommit`, but also stores the 64-byte
+/// `beta` output of `vrfProofToHash`. With `beta` on-chain, other Solana
+/// programs can read the random value directly via a Light SDK CPI without
+/// needing the original proof bytes off-chain.
 ///
 /// Trust model is identical to `VrfProofCommit`: anyone can later audit that
 /// the stored `beta` matches `vrfProofToHash(proof)` and that the proof
@@ -73,7 +71,7 @@ impl VrfProofCommit {
 /// the operator (whose pk is frozen in `VrfAuthority`) populated it
 /// correctly.
 ///
-/// Seeds: ["vrf_proof_b", authority_pda_pubkey, memo_hash]
+/// Seeds: ["vrf_proof", authority_pda_pubkey, memo_hash]
 #[event]
 #[derive(Clone, Debug, Default, LightDiscriminator, LightHasher)]
 pub struct VrfProofCommitWithBeta {
@@ -96,5 +94,5 @@ pub struct VrfProofCommitWithBeta {
 }
 
 impl VrfProofCommitWithBeta {
-    pub const SEED_PREFIX: &'static [u8] = b"vrf_proof_b";
+    pub const SEED_PREFIX: &'static [u8] = VrfProofCommit::SEED_PREFIX;
 }

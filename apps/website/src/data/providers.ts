@@ -1,7 +1,8 @@
 /**
  * Per-call USD pricing for on-chain VRF providers.
  *
- * Numbers gathered 2026-05-12; SOL ~$95, ETH ~$2,300, ETH gas ~1-2 gwei.
+ * cc-vrf rows measured 2026-05-18 against devnet via `cc-vrf-demo cost 100`
+ * at SOL ≈ $180. Other rows gathered 2026-05-12; ETH ~$2,300, ETH gas ~1-2 gwei.
  * Sources are in `notes`/`sourceUrl`. Highly-variable rows (Chainlink L1)
  * use a typical-conditions estimate and flag the gas dependency.
  */
@@ -24,26 +25,27 @@ export interface Provider {
 
 export const PROVIDERS: Provider[] = [
   {
-    name: "cc-vrf (batched)",
-    shortName: "cc-vrf (batched)",
+    name: "cc-vrf event",
+    shortName: "cc-vrf event",
     chain: "solana",
-    costPerCallUsd: 0.0002,
+    costPerCallUsd: 0.0009,
     breakdown:
-      "Amortized compressed PDA + tx fee across a batch of requests.",
+      "Light Protocol authority read-only proof + Solana log event, no per-call commit PDA.",
     sourceUrl: "https://github.com/collectorcrypt/cc-vrf",
     isCcVrf: true,
-    notes: "Per-call cost when commits are batched into one tx.",
+    notes: "Verified frozen authority + log event. 3x cheaper than registry.",
   },
   {
-    name: "cc-vrf (standalone)",
-    shortName: "cc-vrf",
+    name: "cc-vrf registry",
+    shortName: "cc-vrf registry",
     chain: "solana",
-    costPerCallUsd: 0.004,
+    costPerCallUsd: 0.0027,
     breakdown:
-      "Light Protocol compressed PDA mint (~$0.00001) + Solana base tx fee.",
+      "Light Protocol compressed PDA mint + Solana base tx fee with frozen-authority check.",
     sourceUrl: "https://github.com/collectorcrypt/cc-vrf",
     isCcVrf: true,
-    notes: "Per-call cost for a single-commit transaction.",
+    notes:
+      "Frozen-authority registry mode. Same cost with or without on-chain beta.",
   },
   {
     name: "ORAO VRF",
@@ -86,8 +88,7 @@ export const PROVIDERS: Provider[] = [
     costPerCallUsd: 0.15,
     breakdown:
       "L2 verification + callback gas + L1 calldata buffer, plus 50% LINK / 60% native premium.",
-    sourceUrl:
-      "https://docs.chain.link/vrf/v2-5/arbitrum-cost-estimation",
+    sourceUrl: "https://docs.chain.link/vrf/v2-5/arbitrum-cost-estimation",
     excludeFromChart: true,
     notes: "Cross-chain context. Typically $0.05–$0.50 depending on L1 gas.",
   },
@@ -108,10 +109,10 @@ export const PROVIDERS: Provider[] = [
 /** Chart-friendly subset, in ascending cost order. */
 export const CHART_PROVIDERS = PROVIDERS.filter(
   (p) => !p.excludeFromChart && p.costPerCallUsd != null,
-).sort((a, b) => (a.costPerCallUsd! - b.costPerCallUsd!));
+).sort((a, b) => a.costPerCallUsd! - b.costPerCallUsd!);
 
-export const PRICING_AS_OF = "2026-05-12";
+export const PRICING_AS_OF = "2026-05-18";
 export const REFERENCE_PRICES = {
-  sol: 95,
+  sol: 180,
   eth: 2_300,
 };

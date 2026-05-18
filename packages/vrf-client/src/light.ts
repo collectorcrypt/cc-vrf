@@ -29,7 +29,11 @@ export async function buildCreateContext(
   rpc: Rpc,
   programId: PublicKey,
   newCompressedAddress: PublicKey,
-  existingInputs: { hash: Uint8Array; tree: PublicKey; queue: PublicKey }[] = [],
+  existingInputs: {
+    hash: Uint8Array;
+    tree: PublicKey;
+    queue: PublicKey;
+  }[] = [],
 ) {
   forceLightV2();
   const addressTree = new PublicKey(batchAddressTree);
@@ -145,6 +149,55 @@ export async function buildCommitProofContext(
     authorityReadOnlyMeta,
     packedAddressTreeInfo,
     outputStateTreeIndex: outputStIdx,
+    remainingAccountMetas: remainingAccounts.toAccountMetas().remainingAccounts,
+  };
+}
+
+/**
+ * For event-mode commits: builds a validity-proof bundle for an existing
+ * authority treated as read-only. No new compressed address is created.
+ */
+export async function buildReadOnlyAuthorityContext(
+  rpc: Rpc,
+  programId: PublicKey,
+  authorityExisting: CompressedAccountWithMerkleContext,
+) {
+  forceLightV2();
+  const proofRes = await rpc.getValidityProofV0(
+    [
+      {
+        hash: authorityExisting.hash,
+        tree: authorityExisting.treeInfo.tree,
+        queue: authorityExisting.treeInfo.queue,
+      },
+    ],
+    [],
+  );
+
+  const systemAccountConfig = SystemAccountMetaConfig.new(programId);
+  const remainingAccounts =
+    PackedAccounts.newWithSystemAccountsV2(systemAccountConfig);
+  const authMerkleTreePubkeyIndex = remainingAccounts.insertOrGet(
+    authorityExisting.treeInfo.tree,
+  );
+  const authQueuePubkeyIndex = remainingAccounts.insertOrGet(
+    authorityExisting.treeInfo.queue,
+  );
+
+  const authorityReadOnlyMeta = {
+    treeInfo: {
+      rootIndex: proofRes.rootIndices[0],
+      proveByIndex: true,
+      merkleTreePubkeyIndex: authMerkleTreePubkeyIndex,
+      queuePubkeyIndex: authQueuePubkeyIndex,
+      leafIndex: authorityExisting.leafIndex,
+    },
+    address: authorityExisting.address,
+  };
+
+  return {
+    proof: { 0: proofRes.compressedProof },
+    authorityReadOnlyMeta,
     remainingAccountMetas: remainingAccounts.toAccountMetas().remainingAccounts,
   };
 }

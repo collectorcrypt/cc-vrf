@@ -21,8 +21,8 @@ use crate::LIGHT_CPI_SIGNER;
 /// directly into a compressed PDA. Lets other Solana programs read the
 /// random value via Light SDK CPI without needing the proof bytes off-chain.
 ///
-/// Address scheme uses a different seed prefix (`b"vrf_proof_b"`) so commits
-/// stored this way don't collide with the off-chain-verification variant.
+/// Address scheme uses the same seed prefix as `commit_proof`, so one
+/// `(authority, memo_hash)` can only be committed in one registry mode.
 #[derive(Accounts)]
 pub struct CommitProofWithBeta<'info> {
     #[account(mut)]
@@ -46,6 +46,7 @@ pub fn commit_proof_with_beta_handler<'info>(
         current_authority.owner == ctx.accounts.owner.key(),
         VrfError::NotOwner
     );
+    require!(current_authority.frozen, VrfError::AuthorityNotFrozen);
     require!(!current_authority.revoked, VrfError::AuthorityRevoked);
 
     let authority_address = Pubkey::new_from_array(authority_account_meta.address);

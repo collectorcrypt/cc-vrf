@@ -47,6 +47,7 @@ pub fn commit_proof_handler<'info>(
         current_authority.owner == ctx.accounts.owner.key(),
         VrfError::NotOwner
     );
+    require!(current_authority.frozen, VrfError::AuthorityNotFrozen);
     require!(!current_authority.revoked, VrfError::AuthorityRevoked);
 
     // Use the authority's on-chain address as the scoping pubkey for the

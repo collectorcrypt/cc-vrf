@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Keypair } from "@solana/web3.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   alphaHash,
@@ -7,6 +8,8 @@ import {
   memoHash,
   proofHash,
   proveVRF,
+  SUITE_EDWARDS25519_SHA512_TAI,
+  verifyAuthorityCommitEndToEnd,
   verifyEndToEnd,
   vrfProofToHash,
 } from "../src";
@@ -31,6 +34,7 @@ describe("verifyEndToEnd", () => {
     const r = verifyEndToEnd(f);
     expect(r.valid).toBe(true);
     expect(r.ecvrfValid).toBe(true);
+    expect(r.suiteSupported).toBe(true);
     expect(r.proofHashMatches).toBe(true);
     expect(r.alphaHashMatches).toBe(true);
     expect(r.memoHashMatches).toBe(true);
@@ -106,5 +110,72 @@ describe("verifyEndToEnd", () => {
     const r = verifyEndToEnd(f);
     const expectedBeta = vrfProofToHash(f.proof);
     expect(bytesToHex(r.beta!)).toBe(bytesToHex(expectedBeta));
+  });
+
+  it("rejects unsupported suites", () => {
+    const f = makeFixture();
+    const r = verifyEndToEnd({ ...f, suite: 0x04 });
+    expect(r.valid).toBe(false);
+    expect(r.suiteSupported).toBe(false);
+    expect(r.reasons).toContain("unsupported-suite-4");
+  });
+
+  it("checks authority lifecycle, commit authority, and beta in the full verifier", () => {
+    const f = makeFixture();
+    const owner = Keypair.generate();
+    const authorityAddress = Keypair.generate().publicKey;
+    const label = new Uint8Array(32);
+    label.set(new TextEncoder().encode("full-check"));
+    const beta = vrfProofToHash(f.proof);
+    const r = verifyAuthorityCommitEndToEnd({
+      authority: {
+        authorityAddress,
+        owner: owner.publicKey,
+        pk: f.pk,
+        suite: SUITE_EDWARDS25519_SHA512_TAI,
+        frozen: true,
+        revoked: false,
+        label,
+      },
+      expectedOwner: owner.publicKey,
+      expectedLabel: label,
+      expectedAuthorityAddress: authorityAddress,
+      alpha: f.alpha,
+      proof: f.proof,
+      memo: f.memo,
+      onChainCommit: {
+        ...f.onChainCommit,
+        authority: authorityAddress,
+      },
+      onChainBeta: beta,
+    });
+    expect(r.valid).toBe(true);
+    expect(r.authorityFrozen).toBe(true);
+    expect(r.authorityNotRevoked).toBe(true);
+    expect(r.commitAuthorityMatches).toBe(true);
+    expect(r.betaMatches).toBe(true);
+  });
+
+  it("rejects unfrozen authorities in the full verifier", () => {
+    const f = makeFixture();
+    const owner = Keypair.generate();
+    const authorityAddress = Keypair.generate().publicKey;
+    const r = verifyAuthorityCommitEndToEnd({
+      authority: {
+        authorityAddress,
+        owner: owner.publicKey,
+        pk: f.pk,
+        suite: SUITE_EDWARDS25519_SHA512_TAI,
+        frozen: false,
+        revoked: false,
+        label: new Uint8Array(32),
+      },
+      alpha: f.alpha,
+      proof: f.proof,
+      memo: f.memo,
+      onChainCommit: { ...f.onChainCommit, authority: authorityAddress },
+    });
+    expect(r.valid).toBe(false);
+    expect(r.reasons).toContain("authority-not-frozen");
   });
 });

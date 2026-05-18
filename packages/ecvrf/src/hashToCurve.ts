@@ -16,7 +16,7 @@ const MAX_CTR = 256;
  *
  * For ECVRF-EDWARDS25519-SHA512-TAI:
  *   hash_string = SHA-512(
- *     suite_string(0x04) ||
+ *     suite_string(0x03) ||
  *     0x01 ||
  *     encode_to_curve_salt ||
  *     alpha_string ||
@@ -64,5 +64,7 @@ export function encodeToCurveTAI(
     return cleared;
   }
 
-  throw new Error("encode_to_curve_TAI: exceeded max counter without finding valid point");
+  throw new Error(
+    "encode_to_curve_TAI: exceeded max counter without finding valid point",
+  );
 }

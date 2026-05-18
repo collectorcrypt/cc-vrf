@@ -1,8 +1,4 @@
-import {
-  PRICING_AS_OF,
-  PROVIDERS,
-  REFERENCE_PRICES,
-} from "../data/providers";
+import { PRICING_AS_OF, PROVIDERS, REFERENCE_PRICES } from "../data/providers";
 
 export function CostComparison() {
   return (
@@ -16,7 +12,10 @@ export function CostComparison() {
           Per-call USD cost for major on-chain VRF providers, gathered{" "}
           <span className="font-mono text-ink-100">{PRICING_AS_OF}</span> at
           reference prices SOL ≈ ${REFERENCE_PRICES.sol}, ETH ≈ $
-          {REFERENCE_PRICES.eth.toLocaleString()}, ETH gas ~1–2 gwei.
+          {REFERENCE_PRICES.eth.toLocaleString()}, ETH gas ~1–2 gwei. cc-vrf
+          rows measured by running{" "}
+          <code className="font-mono text-ink-100">cc-vrf-demo cost 100</code>{" "}
+          against devnet with a Helius dev RPC.
         </p>
       </header>
 
@@ -43,9 +42,7 @@ export function CostComparison() {
                 <td className="px-4 py-3">
                   <div className="font-medium text-ink-100">{p.name}</div>
                   {p.notes && (
-                    <div className="mt-0.5 text-xs text-ink-400">
-                      {p.notes}
-                    </div>
+                    <div className="mt-0.5 text-xs text-ink-400">{p.notes}</div>
                   )}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-ink-300">

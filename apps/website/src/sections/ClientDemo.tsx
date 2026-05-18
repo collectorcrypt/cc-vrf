@@ -100,12 +100,13 @@ export function ClientDemo() {
           Verifiable randomness, generated in your browser.
         </h2>
         <p className="max-w-3xl text-ink-300">
-          This demo runs <code className="font-mono">@collectorcrypt/ecvrf</code>{" "}
-          directly in your browser &mdash; no wallet, no chain, no server. Each
-          click generates an RFC 9381 proof from the in-memory keypair, runs
-          the verifier on it, and shows the resulting beta. Identical math to
-          what an operator would publish; the only thing missing is the
-          on-chain commit.
+          This demo runs{" "}
+          <code className="font-mono">@collectorcrypt/ecvrf</code> directly in
+          your browser &mdash; no wallet, no chain, no server. Each click
+          generates an RFC 9381 proof from the in-memory keypair, runs the
+          verifier on it, and shows the resulting beta. Identical math to what
+          an operator would publish; the only thing missing is the on-chain
+          commit.
         </p>
       </header>
 
@@ -185,7 +186,9 @@ export function ClientDemo() {
 
       {history.length > 1 && (
         <div className="card flex flex-col gap-2">
-          <h3 className="subsection-title text-sm">Last {history.length} rolls</h3>
+          <h3 className="subsection-title text-sm">
+            Last {history.length} rolls
+          </h3>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {history.map((r, i) => (
               <div

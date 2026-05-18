@@ -14,10 +14,12 @@ import {
   vrfProofToHash,
   SUITE_EDWARDS25519_SHA512_TAI,
   buildInitAuthorityIx,
+  buildFreezeAuthorityIx,
   buildCommitProofIx,
   fetchAuthority,
   fetchProofCommit,
-  verifyEndToEnd,
+  verifyAuthorityCommitEndToEnd,
+  encodeLabel,
 } from "@collectorcrypt/vrf-client";
 
 import {
@@ -44,9 +46,12 @@ const SAMPLE_CODE = `import {
   proveVRF,
   vrfProofToHash,
   buildInitAuthorityIx,
+  buildFreezeAuthorityIx,
   buildCommitProofIx,
+  fetchAuthority,
   fetchProofCommit,
-  verifyEndToEnd,
+  verifyAuthorityCommitEndToEnd,
+  encodeLabel,
   SUITE_EDWARDS25519_SHA512_TAI,
 } from "@collectorcrypt/vrf-client";
 
@@ -62,7 +67,14 @@ const { ix } = await buildInitAuthorityIx(program, rpc, {
 });
 await wallet.sendTransaction(new Transaction().add(ix), connection);
 
-// 3. Commit one VRF call.
+// 3. Freeze the authority. Commits require frozen=true.
+const freezeIx = await buildFreezeAuthorityIx(program, rpc, {
+  owner: wallet.publicKey,
+  label: "my-app",
+});
+await wallet.sendTransaction(new Transaction().add(freezeIx), connection);
+
+// 4. Commit one VRF call.
 const memo = \`req-\${requestId}\`;
 const alpha = sha256(new TextEncoder().encode(memo));
 const { proof } = proveVRF(sk, alpha);
@@ -75,10 +87,18 @@ const { ix: commitIx } = await buildCommitProofIx(program, rpc, {
 });
 await wallet.sendTransaction(new Transaction().add(commitIx), connection);
 
-// 4. Anyone can verify after the fact.
+// 5. Anyone can verify after the fact.
+const auth = await fetchAuthority(program, rpc, wallet.publicKey, "my-app");
+const authority = auth!.onChainAuthority;
+const authorityAddr = auth!.authorityAddress;
+const labelBytes = encodeLabel("my-app");
 const commit = await fetchProofCommit(program, rpc, authorityAddr, memo);
-const { valid } = verifyEndToEnd({
-  pk, alpha, proof, memo, onChainCommit: commit.onChainCommit,
+const { valid } = verifyAuthorityCommitEndToEnd({
+  authority,
+  expectedOwner: wallet.publicKey,
+  expectedLabel: labelBytes,
+  expectedAuthorityAddress: authorityAddr,
+  alpha, proof, memo, onChainCommit: commit.onChainCommit,
 });`;
 
 export function WalletDemo() {
@@ -122,13 +142,19 @@ export function WalletDemo() {
         },
       );
       const sig = await sendIxViaWallet(connection, wallet, ix);
+      setBusy("freezing authority…");
+      const freezeIx = await buildFreezeAuthorityIx(program, rpc, {
+        owner: wallet.publicKey,
+        label,
+      });
+      const freezeSig = await sendIxViaWallet(connection, wallet, freezeIx);
       setAuthorityExists(true);
       setBusy(null);
       setRolls((prev) => [
         {
-          memo: `[init] authority created at ${authorityAddress.toBase58().slice(0, 8)}…`,
+          memo: `[init+freeze] authority ready at ${authorityAddress.toBase58().slice(0, 8)}…`,
           rollValue: 0,
-          txSig: sig,
+          txSig: freezeSig || sig,
           commitAddr: authorityAddress.toBase58(),
           verifyValid: true,
         },
@@ -168,8 +194,11 @@ export function WalletDemo() {
         ? await fetchProofCommit(program, rpc, auth.authorityAddress, memo)
         : null;
       const result = commit
-        ? verifyEndToEnd({
-            pk: vrfKeypair.pk,
+        ? verifyAuthorityCommitEndToEnd({
+            authority: auth!.onChainAuthority,
+            expectedOwner: wallet.publicKey,
+            expectedLabel: encodeLabel(label),
+            expectedAuthorityAddress: auth!.authorityAddress,
             alpha,
             proof,
             memo,
@@ -211,8 +240,9 @@ export function WalletDemo() {
           Roll, commit, verify &mdash; signed by your wallet on devnet.
         </h2>
         <p className="max-w-3xl text-ink-300">
-          Connect a wallet, generate a VRF keypair in-browser, and sign the
-          real <code className="font-mono">init_authority</code> and{" "}
+          Connect a wallet, generate a VRF keypair in-browser, and sign the real{" "}
+          <code className="font-mono">init_authority</code>,{" "}
+          <code className="font-mono">freeze_authority</code>, and{" "}
           <code className="font-mono">commit_proof</code> instructions against
           the deployed program{" "}
           <a
@@ -225,7 +255,7 @@ export function WalletDemo() {
             ccvrfu3fSp…HqGtdgQ
           </a>{" "}
           on devnet. Each roll is then fetched back and run through{" "}
-          <code className="font-mono">verifyEndToEnd</code>.
+          <code className="font-mono">verifyAuthorityCommitEndToEnd</code>.
         </p>
       </header>
 
@@ -306,7 +336,7 @@ export function WalletDemo() {
               onClick={initAuthority}
               disabled={!wallet || busy != null || phase === "ready"}
             >
-              init authority
+              init + freeze
             </button>
             <button
               className="btn-primary"
@@ -317,9 +347,7 @@ export function WalletDemo() {
             </button>
           </div>
 
-          {busy && (
-            <div className="text-sm text-accent-300">{busy}</div>
-          )}
+          {busy && <div className="text-sm text-accent-300">{busy}</div>}
           {error && (
             <div className="rounded-md border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">
               {error}
@@ -331,9 +359,10 @@ export function WalletDemo() {
           <h3 className="subsection-title">Activity</h3>
           {rolls.length === 0 && (
             <p className="text-sm text-ink-400">
-              Connect a wallet, then <span className="font-mono">init authority</span>
-              {" "}and <span className="font-mono">roll once</span>. Each tx
-              shows up here.
+              Connect a wallet, then{" "}
+              <span className="font-mono">init + freeze</span> and{" "}
+              <span className="font-mono">roll once</span>. Each tx shows up
+              here.
             </p>
           )}
           {rolls.map((r, i) => (

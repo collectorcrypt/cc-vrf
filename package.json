@@ -6,13 +6,12 @@
   "packageManager": "pnpm@10.33.4",
   "scripts": {
     "build": "pnpm -r build",
-    "test": "pnpm test:ecvrf && pnpm test:program && pnpm test:client && pnpm test:demo",
+    "test": "pnpm test:ecvrf && pnpm test:client && pnpm test:demo",
     "test:ecvrf": "pnpm --filter @collectorcrypt/ecvrf test",
-    "test:program": "anchor test",
     "test:client": "pnpm --filter @collectorcrypt/vrf-client test",
     "test:demo": "pnpm --filter @collectorcrypt/dice-demo test",
-    "lint": "prettier \"packages/**/*.ts\" \"apps/**/*.ts\" \"programs/**/*.ts\" --check",
-    "lint:fix": "prettier \"packages/**/*.ts\" \"apps/**/*.ts\" \"programs/**/*.ts\" -w"
+    "lint": "prettier \"packages/**/*.{ts,tsx}\" \"apps/**/*.{ts,tsx}\" --check",
+    "lint:fix": "prettier \"packages/**/*.{ts,tsx}\" \"apps/**/*.{ts,tsx}\" -w"
   },
   "devDependencies": {
     "@types/node": "^25.7.0",

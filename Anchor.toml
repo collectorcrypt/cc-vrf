@@ -22,7 +22,10 @@ cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "pnpm exec vitest run --root programs/cc-vrf"
+# `anchor test` is not used — program correctness is exercised by the TS
+# packages (vitest) and the live dice-demo smoke test (CC_VRF_SMOKE=1). This
+# stub exists only so `anchor test` doesn't error if invoked directly.
+test = "true"
 
 [test]
 startup_wait = 10000

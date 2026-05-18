@@ -12,9 +12,7 @@ use light_sdk::{
 };
 
 use crate::errors::VrfError;
-use crate::state::{
-    VrfAuthority, SUITE_EDWARDS25519_SHA512_ELL2, SUITE_EDWARDS25519_SHA512_TAI,
-};
+use crate::state::{VrfAuthority, SUITE_EDWARDS25519_SHA512_TAI};
 use crate::LIGHT_CPI_SIGNER;
 
 #[derive(Accounts)]
@@ -33,11 +31,7 @@ pub fn init_authority_handler<'info>(
     suite: u8,
     label: [u8; 32],
 ) -> Result<()> {
-    require!(
-        suite == SUITE_EDWARDS25519_SHA512_TAI
-            || suite == SUITE_EDWARDS25519_SHA512_ELL2,
-        VrfError::UnsupportedSuite
-    );
+    require!(suite == SUITE_EDWARDS25519_SHA512_TAI, VrfError::UnsupportedSuite);
 
     let cpi_accounts = CpiAccounts::new(
         ctx.accounts.owner.as_ref(),

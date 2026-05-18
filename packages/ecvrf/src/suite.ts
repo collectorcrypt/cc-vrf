@@ -2,7 +2,7 @@ import * as ed from "@noble/ed25519";
 
 /**
  * RFC 9381 §7.5 IANA suite identifier for ECVRF-EDWARDS25519-SHA512-TAI.
- * Note: 0x04 is the ELL2 variant — do not confuse the two.
+ * Note: 0x04 is the ELL2 variant. This package implements TAI only.
  */
 export const SUITE_STRING = 0x03;
 

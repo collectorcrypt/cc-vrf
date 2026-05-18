@@ -83,20 +83,29 @@ pub mod cc_vrf {
         )
     }
 
-    /// Event-mode commit: emits a `VrfProofCommitted` log instead of creating
-    /// a compressed PDA. ~5x cheaper than `commit_proof`. No on-chain replay
-    /// protection — verifiers must detect duplicate memos and pick the proof
-    /// that satisfies the VRF math (which is deterministic, so the real one
-    /// is always recoverable).
-    pub fn commit_proof_event(
-        ctx: Context<CommitProofEvent>,
+    /// Event-mode commit: proves the frozen authority read-only and emits a
+    /// `VrfProofCommitted` log instead of creating a compressed PDA. No
+    /// on-chain replay protection — verifiers must detect duplicate memos and
+    /// pick the proof that satisfies the VRF math.
+    pub fn commit_proof_event<'info>(
+        ctx: Context<'_, '_, '_, 'info, CommitProofEvent<'info>>,
+        proof: ValidityProof,
+        authority_account_meta: CompressedAccountMetaReadOnly,
+        current_authority: VrfAuthority,
         label: [u8; 32],
         memo_hash: [u8; 32],
         proof_hash: [u8; 32],
         alpha_hash: [u8; 32],
     ) -> Result<()> {
         instructions::commit_proof_event::commit_proof_event_handler(
-            ctx, label, memo_hash, proof_hash, alpha_hash,
+            ctx,
+            proof,
+            authority_account_meta,
+            current_authority,
+            label,
+            memo_hash,
+            proof_hash,
+            alpha_hash,
         )
     }
 
@@ -131,8 +140,8 @@ pub mod cc_vrf {
     /// (split as `beta_lo` + `beta_hi`) in the new compressed PDA. Use this
     /// when another Solana program needs to read the random value directly
     /// via a Light SDK CPI, without going through an off-chain fetch of the
-    /// proof bytes. Stored at a different seed prefix so it doesn't collide
-    /// with `commit_proof` records.
+    /// proof bytes. Uses the same seed prefix as `commit_proof` so one memo
+    /// can only be committed in one registry mode.
     pub fn commit_proof_with_beta<'info>(
         ctx: Context<'_, '_, '_, 'info, CommitProofWithBeta<'info>>,
         proof: ValidityProof,

@@ -25,6 +25,7 @@ export function bytesToBigIntLE(bytes: Uint8Array): bigint {
 }
 
 export function bigIntToBytesBE(n: bigint, length: number): Uint8Array {
+  if (n < 0n) throw new Error("cannot encode negative integer");
   const out = new Uint8Array(length);
   let v = n;
   for (let i = length - 1; i >= 0; i--) {
@@ -38,6 +39,7 @@ export function bigIntToBytesBE(n: bigint, length: number): Uint8Array {
 }
 
 export function bigIntToBytesLE(n: bigint, length: number): Uint8Array {
+  if (n < 0n) throw new Error("cannot encode negative integer");
   const out = new Uint8Array(length);
   let v = n;
   for (let i = 0; i < length; i++) {
@@ -54,6 +56,9 @@ export function hexToBytes(hex: string): Uint8Array {
   const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
   if (clean.length % 2 !== 0) {
     throw new Error("hex string must have even length");
+  }
+  if (!/^[0-9a-fA-F]*$/.test(clean)) {
+    throw new Error("hex string contains non-hex characters");
   }
   const out = new Uint8Array(clean.length / 2);
   for (let i = 0; i < out.length; i++) {

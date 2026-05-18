@@ -1,6 +1,6 @@
 ---
 name: cc-vrf
-description: Add Collector Crypt VRF — permissionless on-chain verifiable randomness for Solana, ~$0.0002 per call via Light Protocol compressed PDAs — to a Solana project. Use for dice rolls, NFT trait assignment, lottery draws, validator selection, or any onchain randomness where consumers need to verify the draw after the fact.
+description: Add Collector Crypt VRF — permissionless on-chain verifiable randomness for Solana, ~$0.0009 per call in event mode via Light Protocol compressed PDAs — to a Solana project. Use for dice rolls, NFT trait assignment, lottery draws, validator selection, or any onchain randomness where consumers need to verify the draw after the fact.
 license: MIT
 ---
 
@@ -8,11 +8,11 @@ license: MIT
 
 ## What it is
 
-**cc-vrf** is a standalone on-chain VRF system on Solana. Operators run RFC 9381 ECVRF (Ed25519, SHA-512, TAI variant) off-chain; an Anchor program locks each operator's public key on-chain and stores `sha256(proof)` per VRF call as a Light Protocol compressed PDA.
+**cc-vrf** is a standalone on-chain VRF system on Solana. Operators run RFC 9381 ECVRF (Ed25519, SHA-512, TAI variant) off-chain; an Anchor program registers and freezes each operator's public key on-chain and stores `sha256(proof)` per VRF call as a Light Protocol compressed PDA or verified log event.
 
-- **~$0.0002 per call** (batched) / ~$0.004 standalone
+- **~$0.0009 per call** in event mode, **~$0.0027 per call** in registry mode (measured 2026-05-18, SOL ≈ $180)
 - **Permissionless** — no oracle network, no token, no subscription
-- **Verifiable by anyone** — fetch the on-chain commit, fetch the operator-published proof, run `verifyEndToEnd` to confirm four invariants (ECVRF valid + proof/alpha/memo hashes match)
+- **Verifiable by anyone** — fetch the authority and commit, fetch the operator-published proof, run `verifyAuthorityCommitEndToEnd` to confirm authority lifecycle, suite, ECVRF validity, and proof/alpha/memo hashes
 - **No on-chain cryptography** — the program only stores hashes; randomness is computed off-chain
 
 ## When to use it
@@ -29,14 +29,16 @@ license: MIT
 
 ## Architecture
 
-Two compressed PDAs:
+Compressed PDAs and events:
 
 | PDA | Seeds | Purpose |
 |---|---|---|
 | `VrfAuthority` | `["vrf_authority", owner_pubkey, label_bytes]` | Per-operator pubkey + suite + freeze/revoke flags. One owner can have many authorities by varying `label`. |
 | `VrfProofCommit` | `["vrf_proof", authority_pda, memo_hash]` | Per-VRF-call commitment: `sha256(proof)`, `sha256(alpha)`, `sha256(memo)`, slot. Memo collision impossible by construction (memo_hash is part of the seed). |
+| `VrfProofCommitWithBeta` | `["vrf_proof", authority_pda, memo_hash]` | Same namespace as `VrfProofCommit`, plus 64-byte beta for on-chain consumers. One memo can use either registry shape, not both. |
+| `VrfProofCommitted` | event | Verified frozen authority + per-call commitment in tx logs. Verifiers handle duplicate memos with `pickCanonicalCommit`. |
 
-Four instructions: `init_authority`, `freeze_authority`, `revoke_authority`, `commit_proof`.
+Six instructions: `init_authority`, `freeze_authority`, `revoke_authority`, `commit_proof`, `commit_proof_with_beta`, `commit_proof_event`.
 
 ## Add to your project
 
@@ -95,8 +97,8 @@ const { ix, authorityAddress } = await buildInitAuthorityIx(program, rpc, {
 });
 await provider.sendAndConfirm(new Transaction().add(ix), []);
 
-// Optional but recommended for production: freeze the authority so the pk
-// can never be changed (only one direction — no unfreeze).
+// Required before committing proofs. Freeze marks the authority ready;
+// all commit instructions reject unfrozen or revoked authorities.
 const fr = await buildFreezeAuthorityIx(program, rpc, {
   owner: wallet.publicKey,
   label: "my-app",
@@ -155,23 +157,26 @@ const rollValue = Number(BigInt("0x" + bytesToHex(beta).slice(0, 16)) % 100n) + 
 import {
   fetchAuthority,
   fetchProofCommit,
-  verifyEndToEnd,
+  verifyAuthorityCommitEndToEnd,
+  encodeLabel,
   hexToBytes,
 } from "@collectorcrypt/vrf-client";
 
 const auth = await fetchAuthority(program, rpc, operatorPubkey, "my-app");
 const commit = await fetchProofCommit(program, rpc, auth.authorityAddress, memo);
 
-const result = verifyEndToEnd({
-  pk: Uint8Array.from(auth.decoded.pk),
+const result = verifyAuthorityCommitEndToEnd({
+  authority: auth.onChainAuthority,
+  expectedOwner: operatorPubkey,
+  expectedLabel: encodeLabel("my-app"),
+  expectedAuthorityAddress: auth.authorityAddress,
   alpha: hexToBytes(alphaHex),
   proof: hexToBytes(proofHex),
   memo,
   onChainCommit: commit.onChainCommit,
 });
 
-// result.valid is true only if all four invariants hold:
-//   ecvrfValid && proofHashMatches && alphaHashMatches && memoHashMatches
+// result.valid is true only if authority + suite + ECVRF + all hashes match.
 ```
 
 ## Server-side operator (production pattern)
@@ -190,9 +195,9 @@ export async function POST(req: Request) {
 
 ## Trust model
 
-- Trust the operator who locked the pk to honestly produce proofs.
-- The on-chain commits make any deviation cryptographically detectable: silent key rotation is impossible (pk is locked), and proof withholding leaves an empty commit address that consumers can flag.
-- The program itself does **two things only**: lock public keys, and store proof hashes. It does not custody keys or run cryptography.
+- Trust the operator who registered and froze the pk to honestly produce proofs.
+- The on-chain commits make proof substitution detectable. Proof withholding remains a liveness failure consumers can flag.
+- The program registers/freeze authorities and stores proof commitments. It does not custody keys or run ECVRF verification.
 
 ## Common pitfalls
 
@@ -209,15 +214,16 @@ export async function POST(req: Request) {
 - **Source:** https://github.com/daxherrera/cc-vrf
 - **Spec:** RFC 9381 §5.5 (ECVRF-EDWARDS25519-SHA512-TAI, suite identifier `0x03`)
 - **Compressed PDA backend:** Light Protocol v2 (`@lightprotocol/stateless.js` 0.23.x)
-- **Tests:** 47 ECVRF interop + structure + negative-case tests (byte-exact vs the Rust reference impl), plus 16 SDK unit tests.
+- **Tests:** 50 ECVRF interop + structure + negative-case tests (byte-exact vs the Rust reference impl), plus 26 SDK unit tests.
 
-## Cost reference (per single VRF call)
+## Cost reference (per single VRF call, devnet, 2026-05-18, SOL ≈ $180)
 
-- cc-vrf batched: **~$0.0002**
-- cc-vrf standalone: ~$0.004
+- cc-vrf event mode: **~$0.0009**
+- cc-vrf registry mode: **~$0.0027**
+- cc-vrf registry + beta: ~$0.0027 (same cost as plain registry — 64 bytes is absorbed in the same slot)
 - ORAO VRF (Solana): ~$0.10
 - Switchboard On-Demand VRF (Solana): ~$0.19
 - Chainlink VRF v2.5 (Arbitrum): ~$0.15
 - Chainlink VRF v2.5 (Ethereum L1): ~$2.00
 
-(Pricing as of 2026-05-12. Pyth Entropy is EVM-only — not on Solana mainnet.)
+Event mode is 3.00x cheaper than registry mode per call. Run `pnpm cc-vrf-demo cost <N>` to reproduce against your own RPC and priority-fee setup.

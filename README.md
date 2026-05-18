@@ -3,8 +3,8 @@
 A standalone, permissionless on-chain VRF (Verifiable Random Function) system for Solana, built on Light Protocol compressed PDAs and Anchor log events.
 
 - **Pure-JS ECVRF library** — `@collectorcrypt/ecvrf`. RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI. Byte-exact validated against an independent Rust reference (`vrf-rfc9381`) via 28 fixture-driven interop tests.
-- **Solana program** — locks each operator's public key on-chain via `init_authority` + `freeze_authority`, and offers three commit variants per VRF call: `commit_proof` (compressed PDA), `commit_proof_with_beta` (PDA + on-chain beta for cross-program reads), and `commit_proof_event` (log event only, ~3x cheaper).
-- **TypeScript SDK** — `@collectorcrypt/vrf-client`. Wraps the Anchor IDL, all the Light Protocol plumbing (validity proofs, packed accounts, address-tree-v2), event-log scanning, and ships a single `verifyEndToEnd` (plus `pickCanonicalCommit` for event-mode duplicate detection).
+- **Solana program** — locks each operator's public key on-chain via `init_authority` + `freeze_authority`, then only accepts commits from frozen, unrevoked authorities. It offers three commit variants per VRF call: `commit_proof` (compressed PDA), `commit_proof_with_beta` (same PDA namespace + on-chain beta for cross-program reads), and `commit_proof_event` (verified authority + log event only).
+- **TypeScript SDK** — `@collectorcrypt/vrf-client`. Wraps the Anchor IDL, all the Light Protocol plumbing (validity proofs, packed accounts, address-tree-v2), event-log scanning, and ships `verifyEndToEnd`, `verifyAuthorityCommitEndToEnd`, and `pickCanonicalCommit`.
 - **Reference CLI demo** — `apps/dice-demo`. End-to-end lifecycle (init → freeze → roll → verify → simulate) plus a `cost` command that measures real per-call SOL spend across all three modes.
 
 ## Repository layout
@@ -38,10 +38,10 @@ anchor build
 ## Run the test suites
 
 ```bash
-# 47 tests: 28 RFC 9381 byte-exact interop + structure + round-trip + negative cases
+# 50 tests: 28 RFC 9381 byte-exact interop + structure + round-trip + negative cases
 pnpm --filter @collectorcrypt/ecvrf test
 
-# 23 tests: SDK pure-function tests (verifyEndToEnd math, PDA + with-beta derivation, pickCanonicalCommit)
+# 26 tests: SDK pure-function tests (verifyEndToEnd math, authority checks, PDA + with-beta derivation, pickCanonicalCommit)
 pnpm --filter @collectorcrypt/vrf-client test
 
 # 2 tests: demo CLI state-file round-trip
@@ -64,13 +64,13 @@ cargo run --release --quiet > ../../packages/ecvrf/test/fixtures/rfc9381-vectors
 
 ## How the on-chain layer works
 
-**Compressed accounts + events.** Light Protocol compressed PDAs cost ~$0.00001 to create (vs ~$0.0016 for a normal Solana PDA); event-mode commits cost less still because they skip the PDA entirely.
+**Compressed accounts + events.** Light Protocol compressed PDAs cost far less to create than normal Solana PDAs; event-mode commits skip the per-call commit PDA entirely but still prove the frozen authority read-only.
 
 | Account / Event | Seeds | Purpose |
 |---|---|---|
 | `VrfAuthority` | `["vrf_authority", owner, label]` | Per-operator pubkey + suite + freeze/revoke flags. One owner can have many authorities by varying `label`. |
 | `VrfProofCommit` | `["vrf_proof", authority, memo_hash]` | Registry-mode per-call commitment: `sha256(proof)`, `sha256(alpha)`, `sha256(memo)`, slot. Memo collision impossible by construction. |
-| `VrfProofCommitWithBeta` | `["vrf_proof_b", authority, memo_hash]` | Same as above plus the full 64-byte ECVRF `beta` — readable by other Solana programs via Light SDK CPI. |
+| `VrfProofCommitWithBeta` | `["vrf_proof", authority, memo_hash]` | Same address namespace as `VrfProofCommit`, plus the full 64-byte ECVRF `beta` — readable by other Solana programs via Light SDK CPI. A memo can use either registry mode, not both. |
 | `VrfProofCommitted` (event) | — | Event-mode commitment. No on-chain account; lives in the tx log. Scanned via `getSignaturesForAddress` + `getTransaction` on any Solana RPC. |
 
 **Six instructions.**
@@ -80,9 +80,9 @@ cargo run --release --quiet > ../../packages/ecvrf/test/fixtures/rfc9381-vectors
 | `init_authority(pk, suite, label)` | Creates a fresh `VrfAuthority` owned by signer. |
 | `freeze_authority` | One-way: sets `frozen=true`. After this, the pk and suite are permanent. |
 | `revoke_authority` | Sets `revoked=true`. Informational only — historical proofs remain verifiable. |
-| `commit_proof(memo_hash, proof_hash, alpha_hash)` | **Registry mode.** Writes a new compressed PDA. Chain enforces one commit per memo. |
-| `commit_proof_with_beta(memo_hash, proof_hash, alpha_hash, beta_lo, beta_hi)` | **Registry + beta.** Same as `commit_proof` but additionally stores the 64-byte beta so other programs can read it via Light SDK CPI. Same per-call cost. |
-| `commit_proof_event(label, memo_hash, proof_hash, alpha_hash)` | **Event mode.** Emits a `VrfProofCommitted` log instead of writing a PDA. ~3x cheaper. No Photon RPC required. Verifier must handle duplicate-memo events via `pickCanonicalCommit`. |
+| `commit_proof(memo_hash, proof_hash, alpha_hash)` | **Registry mode.** Requires a frozen, unrevoked authority and writes a new compressed PDA. Chain enforces one registry commit per memo. |
+| `commit_proof_with_beta(memo_hash, proof_hash, alpha_hash, beta_lo, beta_hi)` | **Registry + beta.** Same address namespace as `commit_proof`, but additionally stores the 64-byte beta so other programs can read it via Light SDK CPI. The same memo cannot also have a plain registry commit. |
+| `commit_proof_event(label, memo_hash, proof_hash, alpha_hash)` | **Event mode.** Proves the frozen, unrevoked authority read-only and emits a `VrfProofCommitted` log instead of writing a commit PDA. Verifier must handle duplicate-memo events via `pickCanonicalCommit`. |
 
 ## Choosing a commit mode
 
@@ -90,22 +90,23 @@ cargo run --release --quiet > ../../packages/ecvrf/test/fixtures/rfc9381-vectors
 |---|---|---|---|
 | Instruction | `commit_proof` | `commit_proof_with_beta` | `commit_proof_event` |
 | Storage | Compressed PDA | Compressed PDA + 64-byte beta | Solana log event |
-| **Measured per-call cost (devnet)** | **~$0.0024** | **~$0.0024** | **~$0.0008** |
-| **Per 100k calls** | **~$240** | **~$240** | **~$80** |
+| Authority requirement | frozen + unrevoked | frozen + unrevoked | frozen + unrevoked |
+| **Measured per-call cost (devnet)** | **~$0.0027** | **~$0.0027** | **~$0.0009** |
+| **Per 100k calls** | **~$270** | **~$270** | **~$90** |
 | Chain-enforced replay protection | yes | yes | no (verifier-side via `pickCanonicalCommit`) |
-| RPC requirement | Photon-capable (Helius dev plan or equiv.) | Photon-capable | **any Solana RPC** |
+| Commit RPC requirement | Photon-capable (Helius dev plan or equiv.) | Photon-capable | Photon-capable for the authority proof; event scanning uses any Solana RPC |
 | Other programs can read the random value | hash only | yes (Light SDK CPI) | only via same-tx CPI from operator |
-| Best for | Public lotteries, audit trails | On-chain games consumed by another program | Gacha, internal randomness, high-throughput, no Photon ops |
+| Best for | Public lotteries, audit trails | On-chain games consumed by another program | High-throughput logs where verifier-side duplicate handling is acceptable |
 
-Costs above are measured by `cc-vrf-demo cost` against devnet with a Helius dev RPC at SOL ≈ $160. Real production cost depends on priority-fee market conditions. Run `pnpm cc-vrf-demo cost <N>` yourself to benchmark against your own RPC + priority-fee strategy.
+Costs above are measured by `cc-vrf-demo cost 100` against devnet with a Helius dev RPC at SOL ≈ $180 (2026-05-18). Event mode still proves the frozen authority read-only — that's a Light CPI plus the log emit — and is 3.00x cheaper than registry mode per call. Run `pnpm cc-vrf-demo cost <N>` yourself to benchmark against your own RPC + priority-fee strategy.
 
 ## What event mode loses (and what it doesn't)
 
-Event mode is the cheapest and simplest to deploy, but it shifts one piece of work from the chain to the verifier: the chain accepts multiple `VrfProofCommitted` events for the same memo, so a verifier has to detect duplicates and pick the canonical one. **The deterministic VRF proof is always recoverable from the event list** — RFC 9381 ECVRF guarantees exactly one valid 80-byte proof per `(pk, alpha)`, so there can be at most one cryptographically-valid event among duplicates.
+Event mode skips the per-call commit PDA, but it shifts one piece of work from the chain to the verifier: the chain accepts multiple `VrfProofCommitted` events for the same memo, so a verifier has to detect duplicates and pick the canonical one. The instruction still proves the authority is frozen and unrevoked before emitting the event. **The deterministic VRF proof is always recoverable from the event list** — RFC 9381 ECVRF guarantees exactly one valid 80-byte proof per `(pk, alpha)`, so there can be at most one cryptographically-valid event among duplicates.
 
 The risk isn't fraud (the math forbids it), it's an **"inability to prove which event is canonical"** without running ECVRF. What happens for each verifier strategy:
 
-| Scenario | Naive verifier (picks latest) | Careful verifier (verifyEndToEnd + pickCanonicalCommit) |
+| Scenario | Naive verifier (picks latest) | Careful verifier (`verifyAuthorityCommitEndToEnd` + `pickCanonicalCommit`) |
 |---|---|---|
 | 1 real event | accepts real proof | accepts real proof |
 | Real event, then garbage event later | accepts garbage | rejects garbage (ECVRF fails), accepts real |
@@ -113,7 +114,7 @@ The risk isn't fraud (the math forbids it), it's an **"inability to prove which 
 | Two distinct garbage events, no real one | accepts garbage | rejects both — attack detected |
 | Operator pre-commits many memos, picks favorable later | same risk as registry mode (protocol-level memo selection issue, mitigated by letting the user choose the memo) | same |
 
-`@collectorcrypt/vrf-client` ships `pickCanonicalCommit` to handle the duplicate-detection logic correctly. If your verifier uses it, event mode is equivalent in soundness to registry mode at a fraction of the cost.
+`@collectorcrypt/vrf-client` ships `pickCanonicalCommit` plus `verifyAuthorityCommitEndToEnd` to handle duplicate detection, authority lifecycle checks, suite checks, and beta checks. If your verifier uses them, event mode keeps the same cryptographic soundness as registry mode; it only gives up chain-enforced memo uniqueness.
 
 ## End-to-end devnet smoke
 
@@ -133,20 +134,20 @@ pnpm cc-vrf-demo freeze              # locks the pk permanently
 
 # Registry mode (compressed PDA):
 pnpm cc-vrf-demo roll                # commit_proof, prints value 1..100
-pnpm cc-vrf-demo verify              # fetch PDA + verifyEndToEnd
+pnpm cc-vrf-demo verify              # fetch PDA + verifyAuthorityCommitEndToEnd
 pnpm cc-vrf-demo simulate 50         # 50 back-to-back roll+verify cycles
 
 # Registry + beta mode (PDA + on-chain beta for cross-program reads):
 pnpm cc-vrf-demo roll-with-beta      # commit_proof_with_beta
 pnpm cc-vrf-demo verify-with-beta    # PDA fetch, ECVRF check, beta == vrfProofToHash(proof)
 
-# Event mode (~3x cheaper, no Photon RPC needed):
+# Event mode (no commit PDA; still proves the frozen authority):
 pnpm cc-vrf-demo roll-event          # commit_proof_event, emits a log
-pnpm cc-vrf-demo verify-event        # scans tx logs, pickCanonicalCommit, verify
+pnpm cc-vrf-demo verify-event        # scans tx logs, pickCanonicalCommit, full verify
 pnpm cc-vrf-demo simulate-event 50
 
 # Measure real per-call cost for all three modes (default N=100):
-pnpm cc-vrf-demo cost 50 --sol-usd=160
+pnpm cc-vrf-demo cost 100 --sol-usd=180
 ```
 
 To run the smoke test as part of `pnpm test`:
@@ -158,29 +159,30 @@ CC_VRF_SMOKE=1 CC_VRF_SMOKE_PAYER=$HOME/.config/solana/id.json \
 
 ## Security model
 
-The program does **two** things and only two things:
+The program does **three** things and only three things:
 
-1. **Lock public keys.** Once an authority is frozen, the operator cannot silently rotate to a different secret key.
-2. **Commit proof hashes** (and optionally beta values). Every VRF call gets a permanent on-chain record. The operator cannot hide an unfavorable proof after the fact.
+1. **Register public keys.** `init_authority` creates a compressed authority for one `(owner, label, pk, suite)` tuple. The only supported suite today is RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI (`0x03`).
+2. **Mark authorities ready.** `freeze_authority` is one-way, and all commit instructions require `frozen=true` and `revoked=false`.
+3. **Commit proof hashes** (and optionally beta values). Registry modes create a compressed commit record; event mode emits a log after proving the authority read-only. The operator cannot replace a committed proof without detection.
 
-The program does **not** custody keys, evaluate randomness, or run cryptography on-chain. Each operator runs their own VRF (env vars, Nitro Enclave, threshold scheme — their choice) and posts hashes. Verifiers pull the on-chain commit plus the operator-published proof and run `verifyEndToEnd` from `@collectorcrypt/vrf-client`.
+The program does **not** custody keys, evaluate randomness, or run ECVRF verification on-chain. Each operator runs their own VRF (env vars, Nitro Enclave, threshold scheme — their choice) and posts hashes. Verifiers pull the on-chain commit plus the operator-published proof and run `verifyAuthorityCommitEndToEnd` from `@collectorcrypt/vrf-client`.
 
-**Trust model:** trust the operator who locked the pk to honestly produce VRF proofs. The on-chain commitments make any deviation (silent key rotation, proof withholding) cryptographically detectable. In registry mode the chain *also* enforces one-commit-per-memo; in event mode that responsibility shifts to the verifier (see "What event mode loses" above).
+**Trust model:** trust the operator who registered and froze the pk to honestly produce VRF proofs. The on-chain commitments make proof substitution detectable. In registry mode the chain also enforces one registry commit per memo across plain and beta variants; in event mode memo uniqueness shifts to the verifier (see "What event mode loses" above).
 
 **Trustless on-chain consumption is not in scope.** No Solana program can today verify an RFC 9381 ECVRF proof in a single tx — there's no Ed25519 ECVRF precompile and the curve math costs ~200k+ CU per verify in BPF. The `commit_proof_with_beta` variant lets other programs *read* the random value cheaply, but those programs still trust the operator (whose pk is frozen on chain). Auditors can detect mismatches after the fact by fetching the proof off-chain and re-running the math.
 
 ## Cost comparison
 
-Measured against devnet, SOL ≈ $160. Run `pnpm cc-vrf-demo cost <N>` to reproduce.
+Measured against devnet on 2026-05-18, SOL ≈ $180. Run `pnpm cc-vrf-demo cost <N>` to reproduce against your own RPC and priority-fee setup.
 
-| Monthly VRF calls | Switchboard (~$0.45) | cc-vrf registry (~$0.0024) | cc-vrf event (~$0.0008) |
+| Monthly VRF calls | Switchboard (~$0.45) | cc-vrf registry (~$0.0027) | cc-vrf event (~$0.0009) |
 |---|---:|---:|---:|
-| 10k | $4,500/mo | $24/mo | $8/mo |
-| 100k | $45,000/mo | $240/mo | $80/mo |
-| 1M | $450,000/mo | $2,400/mo | $800/mo |
-| 10M | $4.5M/mo | $24,000/mo | $8,000/mo |
+| 10k | $4,500/mo | $27/mo | $9/mo |
+| 100k | $45,000/mo | $270/mo | $90/mo |
+| 1M | $450,000/mo | $2,700/mo | $900/mo |
+| 10M | $4.5M/mo | $27,000/mo | $9,000/mo |
 
-The `commit_proof_with_beta` variant costs the same as plain registry mode in our benchmark — the extra 64 bytes per leaf is absorbed into the same Light Protocol slot.
+The `commit_proof_with_beta` variant costs the same as plain registry mode in our benchmark — the extra 64 bytes per leaf is absorbed into the same Light Protocol slot. It uses the same address namespace as plain registry mode, so a single `(authority, memo)` can only choose one of the two registry shapes.
 
 Our cost to provide this as permissionless public infrastructure: $0 ongoing. The program lives on Solana; each operator pays only their own tx fees against their own authority.
 

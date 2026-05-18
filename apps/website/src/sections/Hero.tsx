@@ -14,11 +14,17 @@ export function Hero() {
         <p className="max-w-2xl text-lg text-ink-300">
           Permissionless on-chain randomness for Solana. RFC 9381 ECVRF, two
           commit modes (
-          <a href="#/registry" className="font-semibold text-accent-400 hover:underline">
+          <a
+            href="#/registry"
+            className="font-semibold text-accent-400 hover:underline"
+          >
             registry
           </a>{" "}
           or{" "}
-          <a href="#/events" className="font-semibold text-accent-400 hover:underline">
+          <a
+            href="#/events"
+            className="font-semibold text-accent-400 hover:underline"
+          >
             event
           </a>
           ), and every roll is verifiable by anyone.
@@ -39,9 +45,21 @@ export function Hero() {
           </a>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm text-ink-300 sm:grid-cols-3">
-          <Stat label="Per-call (event mode)" value="~$0.0008" sub="measured on devnet" />
-          <Stat label="Per-call (registry mode)" value="~$0.0024" sub="measured on devnet" />
-          <Stat label="Setup" value="Permissionless" sub="no token, no oracle" />
+          <Stat
+            label="Per-call (event mode)"
+            value="~$0.0009"
+            sub="measured on devnet"
+          />
+          <Stat
+            label="Per-call (registry mode)"
+            value="~$0.0027"
+            sub="measured on devnet"
+          />
+          <Stat
+            label="Setup"
+            value="Permissionless"
+            sub="no token, no oracle"
+          />
         </div>
       </div>
     </section>

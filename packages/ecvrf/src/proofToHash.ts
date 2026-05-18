@@ -29,14 +29,17 @@ export function vrfProofToHash(proof: Uint8Array): Uint8Array {
   }
   const gammaBytes = proof.slice(0, PT_LEN);
   const Gamma = ed.Point.fromBytes(gammaBytes);
+  if (Gamma.isSmallOrder() || !Gamma.isTorsionFree()) {
+    throw new Error(
+      "proof Gamma must be a non-small-order prime-subgroup point",
+    );
+  }
   const cofactorGamma = Gamma.multiply(COFACTOR);
 
   const suite = new Uint8Array([SUITE_STRING]);
   const front = new Uint8Array([PROOF_TO_HASH_DST_FRONT]);
   const back = new Uint8Array([PROOF_TO_HASH_DST_BACK]);
-  const beta = sha512(
-    concatBytes(suite, front, cofactorGamma.toBytes(), back),
-  );
+  const beta = sha512(concatBytes(suite, front, cofactorGamma.toBytes(), back));
   if (beta.length !== HASH_LEN) {
     throw new Error("internal: unexpected sha512 output length");
   }

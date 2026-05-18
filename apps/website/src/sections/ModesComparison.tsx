@@ -5,12 +5,14 @@ export function ModesComparison() {
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
           Three commit variants
         </span>
-        <h2 className="section-title">Pick the right cost / trust / consumption tradeoff</h2>
+        <h2 className="section-title">
+          Pick the right cost / trust / consumption tradeoff
+        </h2>
         <p className="max-w-3xl text-ink-300">
           cc-vrf ships three ways to record each VRF call on chain. All three
           share the same RFC 9381 ECVRF math and the same{" "}
           <code className="font-mono text-ink-100">VrfAuthority</code> registry
-          for locking public keys. They differ in where the per-call commitment
+          for frozen public keys. They differ in where the per-call commitment
           lives and whether the random output is directly readable from other
           Solana programs.
         </p>
@@ -29,9 +31,19 @@ export function ModesComparison() {
           <tbody className="text-ink-200">
             <Row
               label="Instruction"
-              registry={<code className="font-mono text-ink-100">commit_proof</code>}
-              registryBeta={<code className="font-mono text-ink-100">commit_proof_with_beta</code>}
-              event={<code className="font-mono text-ink-100">commit_proof_event</code>}
+              registry={
+                <code className="font-mono text-ink-100">commit_proof</code>
+              }
+              registryBeta={
+                <code className="font-mono text-ink-100">
+                  commit_proof_with_beta
+                </code>
+              }
+              event={
+                <code className="font-mono text-ink-100">
+                  commit_proof_event
+                </code>
+              }
             />
             <Row
               label="On-chain storage"
@@ -41,30 +53,50 @@ export function ModesComparison() {
             />
             <Row
               label="Measured cost (devnet)"
-              registry={<span className="font-mono text-ink-100">~$0.0024 / call</span>}
-              registryBeta={<span className="font-mono text-ink-100">~$0.0024 / call</span>}
-              event={<span className="font-mono text-ink-100">~$0.0008 / call</span>}
-            />
-            <Row
-              label="Per 100k calls"
-              registry={<span className="font-mono text-ink-100">~$240</span>}
-              registryBeta={<span className="font-mono text-ink-100">~$240</span>}
-              event={<span className="font-mono text-ink-100">~$80</span>}
-            />
-            <Row
-              label="RPC requirement"
-              registry="Photon-capable RPC"
-              registryBeta="Photon-capable RPC"
+              registry={
+                <span className="font-mono text-ink-100">~$0.0027 / call</span>
+              }
+              registryBeta={
+                <span className="font-mono text-ink-100">~$0.0027 / call</span>
+              }
               event={
-                <span className="text-emerald-400">
-                  Any Solana RPC &mdash; no Photon needed
-                </span>
+                <span className="font-mono text-ink-100">~$0.0009 / call</span>
               }
             />
             <Row
+              label="Per 100k calls"
+              registry={<span className="font-mono text-ink-100">~$270</span>}
+              registryBeta={
+                <span className="font-mono text-ink-100">~$270</span>
+              }
+              event={<span className="font-mono text-ink-100">~$90</span>}
+            />
+            <Row
+              label="Authority requirement"
+              registry={
+                <span className="text-emerald-400">Frozen + unrevoked</span>
+              }
+              registryBeta={
+                <span className="text-emerald-400">Frozen + unrevoked</span>
+              }
+              event={
+                <span className="text-emerald-400">Frozen + unrevoked</span>
+              }
+            />
+            <Row
+              label="Commit RPC requirement"
+              registry="Photon-capable RPC"
+              registryBeta="Photon-capable RPC"
+              event="Photon-capable RPC for authority proof"
+            />
+            <Row
               label="Replay protection"
-              registry={<span className="text-emerald-400">Chain-enforced</span>}
-              registryBeta={<span className="text-emerald-400">Chain-enforced</span>}
+              registry={
+                <span className="text-emerald-400">Chain-enforced</span>
+              }
+              registryBeta={
+                <span className="text-emerald-400">Chain-enforced</span>
+              }
               event={
                 <span className="text-amber-400">
                   Verifier-side via pickCanonicalCommit
@@ -73,29 +105,43 @@ export function ModesComparison() {
             />
             <Row
               label="Other Solana programs can read the random value"
-              registry={<span className="text-amber-400">Only the hash — must fetch proof off-chain</span>}
+              registry={
+                <span className="text-amber-400">
+                  Only the hash — must fetch proof off-chain
+                </span>
+              }
               registryBeta={
                 <span className="text-emerald-400">
                   Yes &mdash; 64-byte beta directly on chain
                 </span>
               }
-              event={<span className="text-amber-400">Only via same-tx CPI from the operator</span>}
+              event={
+                <span className="text-amber-400">
+                  Only via same-tx CPI from the operator
+                </span>
+              }
             />
             <Row
               label="Best for"
               registry="Public lotteries, audit trails, off-chain verifiers"
               registryBeta="On-chain games, lootboxes consumed by another program"
-              event="Gacha, internal randomness, throughput, no Photon ops"
+              event="Gacha, internal randomness, throughput logs"
             />
             <Row
               label="Read more"
               registry={
-                <a className="text-accent-400 hover:underline" href="#/registry">
+                <a
+                  className="text-accent-400 hover:underline"
+                  href="#/registry"
+                >
                   Registry page &rarr;
                 </a>
               }
               registryBeta={
-                <a className="text-accent-400 hover:underline" href="#/registry">
+                <a
+                  className="text-accent-400 hover:underline"
+                  href="#/registry"
+                >
                   Registry page (beta section) &rarr;
                 </a>
               }
@@ -118,12 +164,15 @@ export function ModesComparison() {
             Event mode&rsquo;s tradeoff isn&rsquo;t about fraud &mdash; the
             deterministic VRF proof is always recoverable from the event list.
             It&rsquo;s about a careless verifier potentially being{" "}
-            <span className="text-ink-50">unable to prove</span> which event
-            is canonical without running the ECVRF math. The SDK&rsquo;s{" "}
-            <code className="font-mono text-ink-100">verifyEndToEnd</code> +{" "}
+            <span className="text-ink-50">unable to prove</span> which event is
+            canonical without running the ECVRF math. The SDK&rsquo;s{" "}
+            <code className="font-mono text-ink-100">
+              verifyAuthorityCommitEndToEnd
+            </code>{" "}
+            +{" "}
             <code className="font-mono text-ink-100">pickCanonicalCommit</code>{" "}
             handle this for you. With them, event mode is equivalent in safety
-            to registry mode.
+            to registry mode, except memo uniqueness is verifier-side.
           </p>
         </div>
         <div className="card border-accent-500/20 bg-accent-500/5">
@@ -133,10 +182,10 @@ export function ModesComparison() {
           <p className="text-sm text-ink-300">
             The +beta variant costs the same per call as plain registry mode in
             our devnet benchmark &mdash; the extra 64 bytes per leaf
-            doesn&rsquo;t change the Light Protocol slot cost. If a future
-            on-chain program might consume your randomness, default to the
-            beta variant; you&rsquo;re not paying extra to keep the option
-            open.
+            doesn&rsquo;t change the Light Protocol slot cost. The two share an
+            address namespace, so a given authority+memo can use one shape but
+            not both, which avoids ambiguous dual commits for the same
+            randomness request.
           </p>
         </div>
       </div>

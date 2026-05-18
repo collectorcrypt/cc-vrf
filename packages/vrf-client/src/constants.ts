@@ -10,8 +10,7 @@ export const CC_VRF_PROGRAM_ID = new PublicKey(
 
 export const AUTHORITY_SEED = new TextEncoder().encode("vrf_authority");
 export const PROOF_COMMIT_SEED = new TextEncoder().encode("vrf_proof");
-export const PROOF_COMMIT_WITH_BETA_SEED = new TextEncoder().encode("vrf_proof_b");
+export const PROOF_COMMIT_WITH_BETA_SEED = PROOF_COMMIT_SEED;
 
 /** RFC 9381 §7.5 IANA suite identifier. */
 export const SUITE_EDWARDS25519_SHA512_TAI = 0x03;
-export const SUITE_EDWARDS25519_SHA512_ELL2 = 0x04;

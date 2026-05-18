@@ -9,12 +9,12 @@ export function HowItWorks() {
           Lock the public key. Commit the proof hash. Verify anywhere.
         </h2>
         <p className="max-w-3xl text-ink-300">
-          The on-chain program does two things and only two things: it locks
-          each operator&rsquo;s VRF public key so the operator can&rsquo;t
-          silently rotate, and it stores a SHA-256 commitment for every VRF
-          call so the operator can&rsquo;t hide an unfavorable proof. The
-          randomness itself is computed off-chain in pure JS &mdash; no
-          cryptography runs on the program.
+          The on-chain program registers and freezes each operator&rsquo;s VRF
+          public key, then records SHA-256 commitments for VRF calls. Registry
+          modes enforce one commit per memo; event mode proves the frozen
+          authority and leaves duplicate-memo handling to the verifier. The
+          randomness itself is computed off-chain in pure JS &mdash; no ECVRF
+          verification runs on the program.
         </p>
       </header>
 
@@ -26,8 +26,8 @@ export function HowItWorks() {
         />
         <Step
           n={2}
-          title="freeze_authority (optional)"
-          body="One-way flip — after this the pk and suite are permanent. Operators that publish randomness as a service freeze immediately so consumers can audit history against a fixed key."
+          title="freeze_authority"
+          body="One-way flip that marks the authority ready. All commit instructions require frozen=true and revoked=false."
         />
         <Step
           n={3}
@@ -36,8 +36,8 @@ export function HowItWorks() {
         />
         <Step
           n={4}
-          title="verifyEndToEnd (anyone, off-chain)"
-          body="Fetch the on-chain commit, fetch the operator's published proof, run RFC 9381 verify. The SDK ships verifyEndToEnd that checks the four invariants (ECVRF valid + each hash matches) in one call."
+          title="verifyAuthorityCommitEndToEnd"
+          body="Fetch the authority and commit, fetch the operator's published proof, run RFC 9381 verify. The SDK checks authority lifecycle, suite, ECVRF validity, and each committed hash in one call."
         />
       </div>
 
@@ -46,10 +46,10 @@ export function HowItWorks() {
           <div>
             <h3 className="subsection-title mb-2">Trust model</h3>
             <p className="text-sm text-ink-300">
-              Trust the operator who locked the pk to honestly produce VRF
-              proofs (i.e., not withhold them). The on-chain commitments make
-              any deviation &mdash; silent key rotation, proof withholding,
-              memo collision &mdash; cryptographically detectable.
+              Trust the operator who froze the pk to honestly produce VRF proofs
+              and not withhold results. The on-chain commitments make proof
+              substitution detectable; withholding remains a liveness failure
+              consumers can flag.
             </p>
           </div>
           <div>
@@ -74,8 +74,8 @@ export function HowItWorks() {
               </li>
             </ul>
             <p className="mt-2 text-xs text-ink-400">
-              Both are Light Protocol compressed PDAs &mdash; ~100x cheaper
-              than a normal Solana PDA.
+              Both are Light Protocol compressed PDAs &mdash; ~100x cheaper than
+              a normal Solana PDA.
             </p>
           </div>
         </div>
@@ -84,15 +84,7 @@ export function HowItWorks() {
   );
 }
 
-function Step({
-  n,
-  title,
-  body,
-}: {
-  n: number;
-  title: string;
-  body: string;
-}) {
+function Step({ n, title, body }: { n: number; title: string; body: string }) {
   return (
     <div className="card flex flex-col gap-2">
       <div className="flex items-center gap-3">

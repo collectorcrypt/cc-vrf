@@ -68,22 +68,34 @@ describe("address derivation", () => {
     expect(pa.toBase58()).not.toBe(pb.toBase58());
   });
 
-  it("with-beta commits live at a different address than regular commits for the same memo", () => {
-    // Critical safety property: the two variants share authority + memo, but
-    // their on-chain addresses must NEVER collide, so the same authority can
-    // mix modes without overwriting itself.
+  it("with-beta commits live at the same address as regular commits for the same memo", () => {
+    // Critical safety property: the two variants share authority + memo and
+    // therefore share an address, so the chain allows only one registry commit
+    // variant per memo.
     const authority = Keypair.generate().publicKey;
     const mh = memoHash("same-memo");
     const regular = deriveProofCommitAddress(authority, mh, CC_VRF_PROGRAM_ID);
-    const withBeta = deriveProofCommitWithBetaAddress(authority, mh, CC_VRF_PROGRAM_ID);
-    expect(regular.toBase58()).not.toBe(withBeta.toBase58());
+    const withBeta = deriveProofCommitWithBetaAddress(
+      authority,
+      mh,
+      CC_VRF_PROGRAM_ID,
+    );
+    expect(regular.toBase58()).toBe(withBeta.toBase58());
   });
 
   it("with-beta address is deterministic for the same (authority, memo)", () => {
     const authority = Keypair.generate().publicKey;
     const mh = memoHash("repeat-memo");
-    const a = deriveProofCommitWithBetaAddress(authority, mh, CC_VRF_PROGRAM_ID);
-    const b = deriveProofCommitWithBetaAddress(authority, mh, CC_VRF_PROGRAM_ID);
+    const a = deriveProofCommitWithBetaAddress(
+      authority,
+      mh,
+      CC_VRF_PROGRAM_ID,
+    );
+    const b = deriveProofCommitWithBetaAddress(
+      authority,
+      mh,
+      CC_VRF_PROGRAM_ID,
+    );
     expect(a.toBase58()).toBe(b.toBase58());
   });
 

@@ -20,16 +20,19 @@ export function EventsPage() {
         </h1>
         <p className="max-w-3xl text-lg text-ink-300">
           Skip the compressed PDA. Each VRF call emits a{" "}
-          <code className="font-mono text-ink-100">VrfProofCommitted</code>{" "}
-          log event instead of writing on-chain state.{" "}
-          <span className="text-ink-50 font-semibold">3x cheaper</span> on our
-          devnet benchmark, no Photon indexer required, works against any
-          stock Solana RPC.
+          <code className="font-mono text-ink-100">VrfProofCommitted</code> log
+          event instead of writing a per-call commit PDA. It still proves the
+          frozen authority read-only, so the commit path uses the same
+          Photon-capable RPC setup as the other modes.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Stat label="Per-call cost (devnet)" value="~$0.0008" sub="single tx, measured" />
-          <Stat label="Per 100k calls" value="~$80" sub="extrapolated" />
-          <Stat label="RPC requirement" value="Any Solana RPC" sub="no Photon needed" />
+          <Stat
+            label="Per-call cost (devnet)"
+            value="~$0.0009"
+            sub="single tx, measured 2026-05-18"
+          />
+          <Stat label="Per 100k calls" value="~$90" sub="extrapolated" />
+          <Stat label="vs registry mode" value="3.00x cheaper" sub="per call" />
         </div>
       </section>
 
@@ -37,26 +40,31 @@ export function EventsPage() {
         <h2 className="section-title">The trade-off, in one line</h2>
         <div className="card flex flex-col gap-4">
           <p className="text-ink-100">
-            <span className="text-accent-400 font-semibold">Registry mode:</span>{" "}
+            <span className="text-accent-400 font-semibold">
+              Registry mode:
+            </span>{" "}
             the chain enforces &ldquo;one commit per memo.&rdquo; A careless
             verifier is still safe.
           </p>
           <p className="text-ink-100">
             <span className="text-accent-400 font-semibold">Event mode:</span>{" "}
-            the chain accepts multiple events per memo. A careful verifier
-            (one that runs ECVRF math) is still safe; a careless verifier that
-            just picks &ldquo;the latest event&rdquo; can be misled.
+            the chain accepts multiple events per memo. A careful verifier (one
+            that runs ECVRF math) is still safe; a careless verifier that just
+            picks &ldquo;the latest event&rdquo; can be misled.
           </p>
           <p className="text-sm text-ink-400">
-            This isn&rsquo;t a fraud risk in any cryptographic sense &mdash;
-            the deterministic VRF proof is always recoverable from the event
-            list. It&rsquo;s an{" "}
+            This isn&rsquo;t a fraud risk in any cryptographic sense &mdash; the
+            deterministic VRF proof is always recoverable from the event list.
+            It&rsquo;s an{" "}
             <span className="text-ink-200">
               &ldquo;inability to prove which event is canonical without doing
               the math&rdquo;
             </span>{" "}
             risk. The math is in{" "}
-            <code className="font-mono text-ink-100">verifyEndToEnd</code> and{" "}
+            <code className="font-mono text-ink-100">
+              verifyAuthorityCommitEndToEnd
+            </code>{" "}
+            and{" "}
             <code className="font-mono text-ink-100">pickCanonicalCommit</code>{" "}
             in the SDK.
           </p>
@@ -72,10 +80,9 @@ export function EventsPage() {
           <code className="font-mono text-ink-100">VrfProofCommitted</code>{" "}
           events with the same{" "}
           <code className="font-mono text-ink-100">memo_hash</code> but
-          different{" "}
-          <code className="font-mono text-ink-100">proof_hash</code> values.
-          The chain accepts both. Here&rsquo;s what each verifier strategy
-          would conclude:
+          different <code className="font-mono text-ink-100">proof_hash</code>{" "}
+          values. The chain accepts both. Here&rsquo;s what each verifier
+          strategy would conclude:
         </p>
 
         <div className="overflow-x-auto rounded-xl border border-ink-800">
@@ -83,22 +90,27 @@ export function EventsPage() {
             <thead className="bg-ink-900/60 text-xs uppercase tracking-wider text-ink-400">
               <tr>
                 <th className="px-4 py-3 text-left">Scenario</th>
-                <th className="px-4 py-3 text-left">Naive verifier
+                <th className="px-4 py-3 text-left">
+                  Naive verifier
                   <br />
                   (picks latest event)
                 </th>
                 <th className="px-4 py-3 text-left">
                   Careful verifier
                   <br />
-                  (runs verifyEndToEnd)
+                  (runs full verification)
                 </th>
               </tr>
             </thead>
             <tbody className="text-ink-200">
               <Row
                 scenario="Operator emits 1 real event"
-                naive={<span className="text-emerald-400">accepts real proof</span>}
-                careful={<span className="text-emerald-400">accepts real proof</span>}
+                naive={
+                  <span className="text-emerald-400">accepts real proof</span>
+                }
+                careful={
+                  <span className="text-emerald-400">accepts real proof</span>
+                }
               />
               <Row
                 scenario="Operator emits real event, then garbage event later"
@@ -116,15 +128,17 @@ export function EventsPage() {
                     accepts real (lucky &mdash; latest happens to be real)
                   </span>
                 }
-                careful={<span className="text-emerald-400">accepts real proof</span>}
+                careful={
+                  <span className="text-emerald-400">accepts real proof</span>
+                }
               />
               <Row
                 scenario="Operator emits two distinct garbage events, no real one"
                 naive={<span className="text-red-400">accepts garbage</span>}
                 careful={
                   <span className="text-emerald-400">
-                    rejects both (no ECVRF-valid candidate) &mdash; detects
-                    the attack
+                    rejects both (no ECVRF-valid candidate) &mdash; detects the
+                    attack
                   </span>
                 }
               />
@@ -160,19 +174,18 @@ export function EventsPage() {
             </span>
             . An attacker who emits a junk event for memo{" "}
             <code className="font-mono">X</code> can&rsquo;t produce a second{" "}
-            <em>valid</em> proof for memo{" "}
-            <code className="font-mono">X</code> &mdash; the math forbids it.
-            The real proof always exists somewhere in the event list (or it
-            was never emitted at all, in which case the operator simply
-            withheld the result &mdash; same liveness risk as registry mode).
+            <em>valid</em> proof for memo <code className="font-mono">X</code>{" "}
+            &mdash; the math forbids it. The real proof always exists somewhere
+            in the event list (or it was never emitted at all, in which case the
+            operator simply withheld the result &mdash; same liveness risk as
+            registry mode).
           </p>
           <p className="mt-3 text-sm text-ink-300">
             <span className="text-ink-50 font-semibold">
               Use <code className="font-mono">pickCanonicalCommit</code>
             </span>{" "}
-            from{" "}
-            <code className="font-mono">@collectorcrypt/vrf-client</code> and
-            you&rsquo;re a careful verifier by default.
+            from <code className="font-mono">@collectorcrypt/vrf-client</code>{" "}
+            and you&rsquo;re a careful verifier by default.
           </p>
         </div>
       </section>
@@ -180,8 +193,8 @@ export function EventsPage() {
       <section className="container-wide flex flex-col gap-6">
         <h2 className="section-title">Code path</h2>
         <p className="max-w-3xl text-ink-300">
-          The commit side is a 1-account instruction &mdash; just the signer.
-          No remaining accounts, no validity proof:
+          The commit side proves the frozen authority read-only, then emits a
+          log instead of creating a commit PDA:
         </p>
         <CodeBlock
           language="ts"
@@ -189,11 +202,11 @@ export function EventsPage() {
   buildCommitProofEventIx,
   fetchProofCommitEvents,
   pickCanonicalCommit,
-  verifyEndToEnd,
+  verifyAuthorityCommitEndToEnd,
 } from "@collectorcrypt/vrf-client";
 
-// 1. Commit (operator side) — no Light context, no validity proof
-const ix = await buildCommitProofEventIx(program, {
+// 1. Commit (operator side)
+const ix = await buildCommitProofEventIx(program, rpc, {
   owner: payer.publicKey,
   label,
   memo,
@@ -202,7 +215,7 @@ const ix = await buildCommitProofEventIx(program, {
 });
 await provider.sendAndConfirm(new Transaction().add(ix));
 
-// 2. Verify (anyone, on any Solana RPC — no Photon needed)
+// 2. Scan events (plain Solana RPC works for logs)
 const events = await fetchProofCommitEvents(
   program,
   connection,
@@ -219,7 +232,16 @@ const { canonical, duplicateMemoEvents } = pickCanonicalCommit(
 );
 if (duplicateMemoEvents) console.warn("multiple events for this memo — using ECVRF math to pick");
 
-const result = verifyEndToEnd({ pk, alpha, proof, memo, onChainCommit: canonical! });
+const result = verifyAuthorityCommitEndToEnd({
+  authority,
+  expectedOwner: ownerPubkey,
+  expectedLabel: labelBytes,
+  expectedAuthorityAddress: authorityAddr,
+  alpha,
+  proof,
+  memo,
+  onChainCommit: canonical!,
+});
 // result.valid === true  ⟺  exactly one event matches and the math passes`}
         />
       </section>
@@ -228,28 +250,21 @@ const result = verifyEndToEnd({ pk, alpha, proof, memo, onChainCommit: canonical
         <h2 className="section-title">When to choose event mode</h2>
         <ul className="space-y-3 text-ink-300">
           <Bullet>
-            <strong className="text-ink-50">
-              You own the verifier code.
-            </strong>{" "}
+            <strong className="text-ink-50">You own the verifier code.</strong>{" "}
             If integrators use{" "}
-            <code className="font-mono">verifyEndToEnd</code> +{" "}
-            <code className="font-mono">pickCanonicalCommit</code> from the
-            SDK, security is equivalent to registry mode at a fraction of the
-            cost.
+            <code className="font-mono">verifyAuthorityCommitEndToEnd</code> +{" "}
+            <code className="font-mono">pickCanonicalCommit</code> from the SDK,
+            security is equivalent to registry mode at a fraction of the cost.
           </Bullet>
           <Bullet>
-            <strong className="text-ink-50">
-              Cost per call dominates.
-            </strong>{" "}
-            Gacha, loot drops, internal randomness, high-throughput games
-            where a 3x reduction adds up.
+            <strong className="text-ink-50">Cost per call dominates.</strong>{" "}
+            Gacha, loot drops, internal randomness, high-throughput games where
+            a 3x reduction adds up.
           </Bullet>
           <Bullet>
-            <strong className="text-ink-50">
-              No Photon RPC infrastructure.
-            </strong>{" "}
-            Run against the public devnet endpoint, your own validator, or
-            any Solana RPC. Compressed accounts aren&rsquo;t involved at all.
+            <strong className="text-ink-50">Log-first verification.</strong>{" "}
+            Event scanning uses ordinary Solana transaction logs. Creating the
+            event still needs a validity proof for the frozen authority.
           </Bullet>
           <Bullet>
             <strong className="text-ink-50">
