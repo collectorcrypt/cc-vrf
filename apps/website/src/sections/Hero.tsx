@@ -34,6 +34,9 @@ export function Hero() {
             Get started
             <span aria-hidden>&rarr;</span>
           </a>
+          <a className="btn-ghost" href="#why-secure">
+            Why is this secure? ELI5
+          </a>
           <a className="btn-ghost" href={GITHUB_URL}>
             View on GitHub
           </a>

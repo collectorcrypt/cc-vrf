@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Hero } from "./sections/Hero";
 import { WhyWeMadeThis } from "./sections/WhyWeMadeThis";
 import { HowItWorks } from "./sections/HowItWorks";
+import { WhySecureEli5 } from "./sections/WhySecureEli5";
 import { ModesComparison } from "./sections/ModesComparison";
 import { ClientDemo } from "./sections/ClientDemo";
 import { WalletDemo } from "./sections/WalletDemo";
@@ -35,6 +36,7 @@ function Landing() {
   return (
     <main className="flex min-h-screen flex-col gap-24 pb-24 pt-12 sm:pt-20">
       <Hero />
+      <WhySecureEli5 />
       <HowItWorks />
       <ModesComparison />
       <ClientDemo />
