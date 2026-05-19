@@ -47,7 +47,7 @@ export function Hero() {
             Cost vs. competitors
           </a>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm text-ink-300 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm text-ink-300 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
             label="Per-call (event mode)"
             value="~$0.0009"
@@ -57,6 +57,11 @@ export function Hero() {
             label="Per-call (registry mode)"
             value="~$0.0027"
             sub="measured on devnet"
+          />
+          <Stat
+            label="Built-in streaming"
+            value="Unbounded"
+            sub="one proof → millions of values"
           />
           <Stat
             label="Setup"

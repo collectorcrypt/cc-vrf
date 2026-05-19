@@ -3,6 +3,7 @@
 A standalone, permissionless on-chain VRF (Verifiable Random Function) system for Solana, built on Light Protocol compressed PDAs and Anchor log events.
 
 - **Pure-JS ECVRF library** — `@collectorcrypt/ecvrf`. RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI. Byte-exact validated against an independent Rust reference (`vrf-rfc9381`) via 28 fixture-driven interop tests.
+- **One proof, many random values** — `vrfStream(beta, ...path)` deterministically expands a single VRF output into an unbounded, domain-separated tree of typed values (`nextU32`, `nextRange`, `nextFloat`, `shuffle`, `pick`, `fork`). One on-chain commit can power thousands of dice rolls, card draws, or loot rolls; every value is reproducible — and therefore verifiable — by anyone holding the proof.
 - **Solana program** — locks each operator's public key on-chain via `init_authority` + `freeze_authority`, then only accepts commits from frozen, unrevoked authorities. It offers three commit variants per VRF call: `commit_proof` (compressed PDA), `commit_proof_with_beta` (same PDA namespace + on-chain beta for cross-program reads), and `commit_proof_event` (verified authority + log event only).
 - **TypeScript SDK** — `@collectorcrypt/vrf-client`. Wraps the Anchor IDL, all the Light Protocol plumbing (validity proofs, packed accounts, address-tree-v2), event-log scanning, and ships `verifyEndToEnd`, `verifyAuthorityCommitEndToEnd`, and `pickCanonicalCommit`.
 - **Reference CLI demo** — `apps/dice-demo`. End-to-end lifecycle (init → freeze → roll → verify → simulate) plus a `cost` command that measures real per-call SOL spend across all three modes.
@@ -38,7 +39,7 @@ anchor build
 ## Run the test suites
 
 ```bash
-# 50 tests: 28 RFC 9381 byte-exact interop + structure + round-trip + negative cases
+# 68 tests: 28 RFC 9381 byte-exact interop + structure + round-trip + negative cases + stream expander
 pnpm --filter @collectorcrypt/ecvrf test
 
 # 26 tests: SDK pure-function tests (verifyEndToEnd math, authority checks, PDA + with-beta derivation, pickCanonicalCommit)
