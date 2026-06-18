@@ -1,5 +1,5 @@
 /**
- * @collectorcrypt/vrf-client
+ * @collector-crypt/vrf-client
  *
  * TypeScript SDK for the cc-vrf on-chain VRF program. Wraps the Anchor IDL,
  * Light Protocol compressed-PDA plumbing, and the RFC 9381 ECVRF library so
@@ -15,7 +15,7 @@ export {
   vrfProofToHash,
   bytesToHex,
   hexToBytes,
-} from "@collectorcrypt/ecvrf";
+} from "@collector-crypt/ecvrf";
 
 export { CC_VRF_PROGRAM_ID, SUITE_EDWARDS25519_SHA512_TAI } from "./constants";
 

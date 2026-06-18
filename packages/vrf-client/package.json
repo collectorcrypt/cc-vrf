@@ -1,5 +1,5 @@
 {
-  "name": "@collectorcrypt/vrf-client",
+  "name": "@collector-crypt/vrf-client",
   "version": "0.1.0",
   "description": "TypeScript SDK for the cc-vrf on-chain VRF program (Solana + Light Protocol)",
   "license": "MIT",
@@ -35,7 +35,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@collectorcrypt/ecvrf": "workspace:*",
+    "@collector-crypt/ecvrf": "workspace:*",
     "@coral-xyz/anchor": "^0.32.1",
     "@lightprotocol/stateless.js": "^0.23.3",
     "@noble/hashes": "^2.2.0",

@@ -1,4 +1,4 @@
-import { verifyVRF, vrfProofToHash, bytesToHex } from "@collectorcrypt/ecvrf";
+import { verifyVRF, vrfProofToHash, bytesToHex } from "@collector-crypt/ecvrf";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { PublicKey } from "@solana/web3.js";
 import { deriveAuthorityAddress } from "./addresses";
