@@ -7,9 +7,9 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm test:ecvrf && pnpm test:client && pnpm test:demo",
-    "test:ecvrf": "pnpm --filter @collector-crypt/ecvrf test",
-    "test:client": "pnpm --filter @collector-crypt/vrf-client test",
-    "test:demo": "pnpm --filter @collector-crypt/dice-demo test",
+    "test:ecvrf": "pnpm --filter @collectorcrypt/ecvrf test",
+    "test:client": "pnpm --filter @collectorcrypt/vrf-client test",
+    "test:demo": "pnpm --filter @collectorcrypt/dice-demo test",
     "lint": "prettier \"packages/**/*.{ts,tsx}\" \"apps/**/*.{ts,tsx}\" --check",
     "lint:fix": "prettier \"packages/**/*.{ts,tsx}\" \"apps/**/*.{ts,tsx}\" -w"
   },

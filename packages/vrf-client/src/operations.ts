@@ -11,7 +11,7 @@ import {
   CompressedAccountWithMerkleContext,
   Rpc,
 } from "@lightprotocol/stateless.js";
-import { verifyVRF, vrfProofToHash } from "@collector-crypt/ecvrf";
+import { verifyVRF, vrfProofToHash } from "@collectorcrypt/ecvrf";
 
 import {
   alphaHash as alphaHashFn,

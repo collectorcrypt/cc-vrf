@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "pnpm -w build && pnpm --filter @collector-crypt/cc-vrf-website build",
+  "buildCommand": "pnpm -w build && pnpm --filter @collectorcrypt/cc-vrf-website build",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "outputDirectory": "dist"
 }

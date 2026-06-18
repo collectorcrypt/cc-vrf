@@ -45,7 +45,7 @@ Six instructions: `init_authority`, `freeze_authority`, `revoke_authority`, `com
 ### 1. Install
 
 ```bash
-pnpm add @collector-crypt/vrf-client @lightprotocol/stateless.js \
+pnpm add @collectorcrypt/vrf-client @lightprotocol/stateless.js \
         @coral-xyz/anchor @solana/web3.js @noble/hashes
 ```
 
@@ -54,8 +54,8 @@ If installing from source (packages not yet on npm):
 ```bash
 git clone https://github.com/daxherrera/cc-vrf.git
 cd cc-vrf && pnpm install
-pnpm --filter @collector-crypt/ecvrf build
-pnpm --filter @collector-crypt/vrf-client build
+pnpm --filter @collectorcrypt/ecvrf build
+pnpm --filter @collectorcrypt/vrf-client build
 # then `pnpm link` from those package dirs, or use a workspace dep.
 ```
 
@@ -77,7 +77,7 @@ import {
   buildFreezeAuthorityIx,
   SUITE_EDWARDS25519_SHA512_TAI,
   getProgram,
-} from "@collector-crypt/vrf-client";
+} from "@collectorcrypt/vrf-client";
 import * as anchor from "@coral-xyz/anchor";
 
 // Operator keypair — store the secret somewhere safe (env var, KMS, etc.).
@@ -115,7 +115,7 @@ import {
   vrfProofToHash,
   bytesToHex,
   buildCommitProofIx,
-} from "@collector-crypt/vrf-client";
+} from "@collectorcrypt/vrf-client";
 
 async function rollFor(requestId: string) {
   // Alpha is whatever you want bound to this draw. Hash a memo with sha256
@@ -160,7 +160,7 @@ import {
   verifyAuthorityCommitEndToEnd,
   encodeLabel,
   hexToBytes,
-} from "@collector-crypt/vrf-client";
+} from "@collectorcrypt/vrf-client";
 
 const auth = await fetchAuthority(program, rpc, operatorPubkey, "my-app");
 const commit = await fetchProofCommit(program, rpc, auth.authorityAddress, memo);

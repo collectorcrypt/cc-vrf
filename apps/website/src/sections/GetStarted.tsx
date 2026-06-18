@@ -1,11 +1,11 @@
 import { CodeBlock } from "../components/CodeBlock";
 import { CC_VRF_PROGRAM_ID, GITHUB_URL } from "../data/constants";
 
-const INSTALL = `pnpm add @collector-crypt/vrf-client @lightprotocol/stateless.js @coral-xyz/anchor @solana/web3.js`;
+const INSTALL = `pnpm add @collectorcrypt/vrf-client @lightprotocol/stateless.js @coral-xyz/anchor @solana/web3.js`;
 
 const QUICKSTART = `import {
   generateKeyPair, proveVRF, vrfProofToHash, bytesToHex,
-} from "@collector-crypt/vrf-client";
+} from "@collectorcrypt/vrf-client";
 
 // 1. Operator: keep this secret. Same key forever (or rotate via revoke).
 const { sk, pk } = generateKeyPair();
@@ -68,7 +68,7 @@ export function GetStarted() {
               <dt>idl + types</dt>
               <dd>
                 included in{" "}
-                <code className="font-mono">@collector-crypt/vrf-client</code>
+                <code className="font-mono">@collectorcrypt/vrf-client</code>
               </dd>
             </dl>
           </div>
@@ -77,13 +77,13 @@ export function GetStarted() {
             <ul className="space-y-1 text-sm text-ink-300">
               <li>
                 <code className="font-mono text-ink-100">
-                  @collector-crypt/ecvrf
+                  @collectorcrypt/ecvrf
                 </code>{" "}
                 &mdash; RFC 9381 Ed25519 ECVRF (zero Solana deps).
               </li>
               <li>
                 <code className="font-mono text-ink-100">
-                  @collector-crypt/vrf-client
+                  @collectorcrypt/vrf-client
                 </code>{" "}
                 &mdash; on-chain SDK + full verification helpers.
               </li>

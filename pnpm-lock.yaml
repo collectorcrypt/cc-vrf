@@ -26,10 +26,10 @@ importers:
 
   apps/dice-demo:
     dependencies:
-      '@collector-crypt/ecvrf':
+      '@collectorcrypt/ecvrf':
         specifier: workspace:*
         version: link:../../packages/ecvrf
-      '@collector-crypt/vrf-client':
+      '@collectorcrypt/vrf-client':
         specifier: workspace:*
         version: link:../../packages/vrf-client
       '@coral-xyz/anchor':
@@ -60,10 +60,10 @@ importers:
 
   apps/website:
     dependencies:
-      '@collector-crypt/ecvrf':
+      '@collectorcrypt/ecvrf':
         specifier: workspace:*
         version: link:../../packages/ecvrf
-      '@collector-crypt/vrf-client':
+      '@collectorcrypt/vrf-client':
         specifier: workspace:*
         version: link:../../packages/vrf-client
       '@coral-xyz/anchor':
@@ -149,7 +149,7 @@ importers:
 
   packages/vrf-client:
     dependencies:
-      '@collector-crypt/ecvrf':
+      '@collectorcrypt/ecvrf':
         specifier: workspace:*
         version: link:../ecvrf
       '@coral-xyz/anchor':

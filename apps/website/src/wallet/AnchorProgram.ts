@@ -7,7 +7,7 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { AnchorWallet } from "@solana/wallet-adapter-react";
-import { getProgram } from "@collector-crypt/vrf-client";
+import { getProgram } from "@collectorcrypt/vrf-client";
 
 /**
  * Build an Anchor Program instance pinned to the connected wallet. The

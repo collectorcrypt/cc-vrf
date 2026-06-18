@@ -254,7 +254,7 @@ export function RegistryPage() {
   buildCommitProofIx,
   fetchProofCommit,
   verifyAuthorityCommitEndToEnd,
-} from "@collector-crypt/vrf-client";
+} from "@collectorcrypt/vrf-client";
 
 // 1. Commit (operator side)
 const { ix } = await buildCommitProofIx(program, rpc, {
@@ -291,7 +291,7 @@ const result = verifyAuthorityCommitEndToEnd({
   buildCommitProofWithBetaIx,
   fetchProofCommitWithBeta,
   vrfProofToHash,
-} from "@collector-crypt/vrf-client";
+} from "@collectorcrypt/vrf-client";
 
 const beta = vrfProofToHash(proof); // 64-byte ECVRF output
 

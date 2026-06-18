@@ -5,7 +5,7 @@ import {
   proveVRF,
   verifyVRF,
   vrfProofToHash,
-} from "@collector-crypt/ecvrf";
+} from "@collectorcrypt/ecvrf";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { CodeBlock } from "../components/CodeBlock";
 
@@ -24,7 +24,7 @@ const SAMPLE_CODE = `import {
   proveVRF,
   verifyVRF,
   vrfProofToHash,
-} from "@collector-crypt/ecvrf";
+} from "@collectorcrypt/ecvrf";
 import { sha256 } from "@noble/hashes/sha2.js";
 
 const { sk, pk } = generateKeyPair();
@@ -101,7 +101,7 @@ export function ClientDemo() {
         </h2>
         <p className="max-w-3xl text-ink-300">
           This demo runs{" "}
-          <code className="font-mono">@collector-crypt/ecvrf</code> directly in
+          <code className="font-mono">@collectorcrypt/ecvrf</code> directly in
           your browser &mdash; no wallet, no chain, no server. Each click
           generates an RFC 9381 proof from the in-memory keypair, runs the
           verifier on it, and shows the resulting beta. Identical math to what
