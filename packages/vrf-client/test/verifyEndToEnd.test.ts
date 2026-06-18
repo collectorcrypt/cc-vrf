@@ -4,6 +4,8 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import {
   alphaHash,
   bytesToHex,
+  CC_VRF_PROGRAM_ID,
+  deriveAuthorityAddress,
   generateKeyPair,
   memoHash,
   proofHash,
@@ -123,9 +125,13 @@ describe("verifyEndToEnd", () => {
   it("checks authority lifecycle, commit authority, and beta in the full verifier", () => {
     const f = makeFixture();
     const owner = Keypair.generate();
-    const authorityAddress = Keypair.generate().publicKey;
     const label = new Uint8Array(32);
     label.set(new TextEncoder().encode("full-check"));
+    const authorityAddress = deriveAuthorityAddress(
+      owner.publicKey,
+      label,
+      CC_VRF_PROGRAM_ID,
+    );
     const beta = vrfProofToHash(f.proof);
     const r = verifyAuthorityCommitEndToEnd({
       authority: {
@@ -159,7 +165,12 @@ describe("verifyEndToEnd", () => {
   it("rejects unfrozen authorities in the full verifier", () => {
     const f = makeFixture();
     const owner = Keypair.generate();
-    const authorityAddress = Keypair.generate().publicKey;
+    const label = new Uint8Array(32);
+    const authorityAddress = deriveAuthorityAddress(
+      owner.publicKey,
+      label,
+      CC_VRF_PROGRAM_ID,
+    );
     const r = verifyAuthorityCommitEndToEnd({
       authority: {
         authorityAddress,
@@ -168,7 +179,7 @@ describe("verifyEndToEnd", () => {
         suite: SUITE_EDWARDS25519_SHA512_TAI,
         frozen: false,
         revoked: false,
-        label: new Uint8Array(32),
+        label,
       },
       alpha: f.alpha,
       proof: f.proof,
@@ -177,5 +188,74 @@ describe("verifyEndToEnd", () => {
     });
     expect(r.valid).toBe(false);
     expect(r.reasons).toContain("authority-not-frozen");
+  });
+
+  it("rejects a commit whose authority address doesn't match the rederived (owner, label) address", () => {
+    const f = makeFixture();
+    const owner = Keypair.generate();
+    const label = new Uint8Array(32);
+    label.set(new TextEncoder().encode("hardening-check"));
+    const realAuthority = deriveAuthorityAddress(
+      owner.publicKey,
+      label,
+      CC_VRF_PROGRAM_ID,
+    );
+    const attackerAuthority = Keypair.generate().publicKey;
+    const r = verifyAuthorityCommitEndToEnd({
+      authority: {
+        // Hand-built authority with a bogus authorityAddress that doesn't
+        // match (owner, label). The verifier must ignore this field and
+        // rederive from owner+label.
+        authorityAddress: attackerAuthority,
+        owner: owner.publicKey,
+        pk: f.pk,
+        suite: SUITE_EDWARDS25519_SHA512_TAI,
+        frozen: true,
+        revoked: false,
+        label,
+      },
+      alpha: f.alpha,
+      proof: f.proof,
+      memo: f.memo,
+      // commit claims to belong to attackerAuthority — must be rejected.
+      onChainCommit: { ...f.onChainCommit, authority: attackerAuthority },
+    });
+    expect(r.valid).toBe(false);
+    expect(r.commitAuthorityMatches).toBe(false);
+    expect(r.reasons).toContain("commit-authority-mismatch");
+    // Sanity: a commit pointing at the real (owner, label)-derived address
+    // would have passed the binding check.
+    expect(realAuthority.toBase58()).not.toBe(attackerAuthority.toBase58());
+  });
+
+  it("rejects an inconsistent expectedAuthorityAddress that disagrees with rederived (owner, label)", () => {
+    const f = makeFixture();
+    const owner = Keypair.generate();
+    const label = new Uint8Array(32);
+    label.set(new TextEncoder().encode("inconsistent"));
+    const realAuthority = deriveAuthorityAddress(
+      owner.publicKey,
+      label,
+      CC_VRF_PROGRAM_ID,
+    );
+    const wrongExpectation = Keypair.generate().publicKey;
+    const r = verifyAuthorityCommitEndToEnd({
+      authority: {
+        authorityAddress: realAuthority,
+        owner: owner.publicKey,
+        pk: f.pk,
+        suite: SUITE_EDWARDS25519_SHA512_TAI,
+        frozen: true,
+        revoked: false,
+        label,
+      },
+      expectedAuthorityAddress: wrongExpectation,
+      alpha: f.alpha,
+      proof: f.proof,
+      memo: f.memo,
+      onChainCommit: { ...f.onChainCommit, authority: realAuthority },
+    });
+    expect(r.valid).toBe(false);
+    expect(r.reasons).toContain("expected-authority-address-mismatch");
   });
 });

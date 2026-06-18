@@ -6,14 +6,16 @@ import { WhySecureEli5 } from "./sections/WhySecureEli5";
 import { ModesComparison } from "./sections/ModesComparison";
 import { ClientDemo } from "./sections/ClientDemo";
 import { WalletDemo } from "./sections/WalletDemo";
-import { ServerSidePattern } from "./sections/ServerSidePattern";
 import { CostComparison } from "./sections/CostComparison";
 import { ClaudeSkill } from "./sections/ClaudeSkill";
 import { GetStarted } from "./sections/GetStarted";
+import { Tools } from "./sections/Tools";
 import { Footer } from "./sections/Footer";
 import { WalletProviders } from "./wallet/WalletProviders";
 import { RegistryPage } from "./pages/RegistryPage";
 import { EventsPage } from "./pages/EventsPage";
+import { LookupPage } from "./pages/LookupPage";
+import { VerifyPage } from "./pages/VerifyPage";
 
 /**
  * Tiny hash-router: reads `window.location.hash` and re-renders on
@@ -34,18 +36,18 @@ function useHashRoute(): string {
 
 function Landing() {
   return (
-    <main className="flex min-h-screen flex-col gap-24 pb-24 pt-12 sm:pt-20">
+    <main className="flex min-h-screen flex-col gap-20 pb-24 pt-12 sm:pt-20">
       <Hero />
+      <WhyWeMadeThis />
       <WhySecureEli5 />
       <HowItWorks />
       <ModesComparison />
+      <CostComparison />
       <ClientDemo />
       <WalletDemo />
-      <ServerSidePattern />
-      <CostComparison />
+      <Tools />
       <ClaudeSkill />
       <GetStarted />
-      <WhyWeMadeThis />
       <Footer />
     </main>
   );
@@ -65,6 +67,8 @@ export function App() {
   let page: React.ReactNode;
   if (hash === "#/registry") page = <RegistryPage />;
   else if (hash === "#/events") page = <EventsPage />;
+  else if (hash === "#/lookup") page = <LookupPage />;
+  else if (hash === "#/verify") page = <VerifyPage />;
   else page = <Landing />;
 
   return <WalletProviders>{page}</WalletProviders>;

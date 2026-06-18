@@ -1,6 +1,6 @@
 # cc-vrf
 
-A standalone, permissionless on-chain VRF (Verifiable Random Function) system for Solana, built on Light Protocol compressed PDAs and Anchor log events.
+A standalone, permissionless on-chain VRF (Verifiable Random Function) system for Solana, built on Light Protocol compressed PDAs and Anchor log events. Live on **devnet + mainnet** at program ID `ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ`.
 
 - **Pure-JS ECVRF library** — `@collectorcrypt/ecvrf`. RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI. Byte-exact validated against an independent Rust reference (`vrf-rfc9381`) via 28 fixture-driven interop tests.
 - **One proof, many random values** — `vrfStream(beta, ...path)` deterministically expands a single VRF output into an unbounded, domain-separated tree of typed values (`nextU32`, `nextRange`, `nextFloat`, `shuffle`, `pick`, `fork`). One on-chain commit can power thousands of dice rolls, card draws, or loot rolls; every value is reproducible — and therefore verifiable — by anyone holding the proof.

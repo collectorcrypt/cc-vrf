@@ -77,7 +77,9 @@ export function vrfStream(beta: Uint8Array, ...path: string[]): VrfStream {
   let bufOffset = 0;
 
   function refill(): void {
-    buf = sha512(concatBytes(EXPAND_TAG, betaCopy, encodedPath, u64be(blockIndex)));
+    buf = sha512(
+      concatBytes(EXPAND_TAG, betaCopy, encodedPath, u64be(blockIndex)),
+    );
     bufOffset = 0;
     blockIndex += 1n;
   }

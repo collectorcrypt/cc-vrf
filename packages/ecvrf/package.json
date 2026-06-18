@@ -1,7 +1,7 @@
 {
   "name": "@collectorcrypt/ecvrf",
   "version": "0.1.0",
-  "description": "RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI verifiable random function",
+  "description": "RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI verifiable random function (pure JS)",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,6 +10,23 @@
     "src",
     "README.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/collectorcrypt/cc-vrf.git",
+    "directory": "packages/ecvrf"
+  },
+  "homepage": "https://vrf.collectorcrypt.com",
+  "keywords": [
+    "vrf",
+    "ecvrf",
+    "rfc-9381",
+    "ed25519",
+    "verifiable-random-function",
+    "solana"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"

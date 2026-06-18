@@ -210,7 +210,9 @@ export async function POST(req: Request) {
 ## Reference
 
 - **Program ID:** `ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ` (same on devnet + mainnet)
-- **Cluster:** devnet (mainnet pending)
+- **Clusters:** devnet + mainnet (live; upgrade authority held by the deployer)
+- **Browse operators:** https://vrf.collectorcrypt.com/#/lookup
+- **Verify a roll:** https://vrf.collectorcrypt.com/#/verify
 - **Source:** https://github.com/daxherrera/cc-vrf
 - **Spec:** RFC 9381 §5.5 (ECVRF-EDWARDS25519-SHA512-TAI, suite identifier `0x03`)
 - **Compressed PDA backend:** Light Protocol v2 (`@lightprotocol/stateless.js` 0.23.x)

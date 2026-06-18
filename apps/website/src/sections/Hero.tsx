@@ -12,62 +12,34 @@ export function Hero() {
           </span>
         </h1>
         <p className="max-w-2xl text-lg text-ink-300">
-          Permissionless on-chain randomness for Solana. RFC 9381 ECVRF, two
-          commit modes (
-          <a
-            href="#/registry"
-            className="font-semibold text-accent-400 hover:underline"
-          >
-            registry
-          </a>{" "}
-          or{" "}
-          <a
-            href="#/events"
-            className="font-semibold text-accent-400 hover:underline"
-          >
-            event
-          </a>
-          ), and every roll is verifiable by anyone.
+          Permissionless on-chain randomness for Solana. RFC 9381 ECVRF, live on
+          devnet and mainnet, every roll publicly verifiable. From{" "}
+          <span className="font-mono text-ink-100">$0.0009</span> per call.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <a className="btn-primary" href="#get-started">
             Get started
             <span aria-hidden>&rarr;</span>
           </a>
-          <a className="btn-ghost" href="#why-secure">
-            Why is this secure? ELI5
+          <a className="btn-ghost" href="#/lookup">
+            Look up operator
+          </a>
+          <a className="btn-ghost" href="#/verify">
+            Verify a roll
           </a>
           <a className="btn-ghost" href={GITHUB_URL}>
-            View on GitHub
-          </a>
-          <a className="btn-ghost" href="#modes">
-            Compare the two modes
-          </a>
-          <a className="btn-ghost" href="#cost">
-            Cost vs. competitors
+            GitHub
           </a>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm text-ink-300 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat
-            label="Per-call (event mode)"
-            value="~$0.0009"
-            sub="measured on devnet"
-          />
-          <Stat
-            label="Per-call (registry mode)"
-            value="~$0.0027"
-            sub="measured on devnet"
-          />
-          <Stat
-            label="Built-in streaming"
-            value="Unbounded"
-            sub="one proof → millions of values"
-          />
+        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm text-ink-300 sm:grid-cols-4">
+          <Stat label="Event mode" value="~$0.0009" sub="per call" />
+          <Stat label="Registry mode" value="~$0.0027" sub="per call" />
           <Stat
             label="Setup"
             value="Permissionless"
             sub="no token, no oracle"
           />
+          <Stat label="Spec" value="RFC 9381" sub="byte-exact tested" />
         </div>
       </div>
     </section>

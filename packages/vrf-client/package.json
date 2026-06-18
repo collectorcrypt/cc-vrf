@@ -1,7 +1,7 @@
 {
   "name": "@collectorcrypt/vrf-client",
   "version": "0.1.0",
-  "description": "TypeScript SDK for the cc-vrf on-chain VRF program",
+  "description": "TypeScript SDK for the cc-vrf on-chain VRF program (Solana + Light Protocol)",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,6 +10,25 @@
     "src",
     "README.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/collectorcrypt/cc-vrf.git",
+    "directory": "packages/vrf-client"
+  },
+  "homepage": "https://vrf.collectorcrypt.com",
+  "keywords": [
+    "vrf",
+    "ecvrf",
+    "solana",
+    "anchor",
+    "light-protocol",
+    "compressed-pda",
+    "verifiable-random-function",
+    "rfc-9381"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && node -e \"const fs=require('node:fs');fs.mkdirSync('dist/idl',{recursive:true});fs.copyFileSync('src/idl/cc_vrf.json','dist/idl/cc_vrf.json')\"",
     "refresh:idl": "node -e \"const fs=require('node:fs');fs.mkdirSync('src/idl',{recursive:true});fs.copyFileSync('../../target/idl/cc_vrf.json','src/idl/cc_vrf.json');console.log('idl refreshed')\"",

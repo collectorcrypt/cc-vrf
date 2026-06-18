@@ -1,7 +1,8 @@
 import { verifyVRF, vrfProofToHash, bytesToHex } from "@collectorcrypt/ecvrf";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { PublicKey } from "@solana/web3.js";
-import { SUITE_EDWARDS25519_SHA512_TAI } from "./constants";
+import { deriveAuthorityAddress } from "./addresses";
+import { CC_VRF_PROGRAM_ID, SUITE_EDWARDS25519_SHA512_TAI } from "./constants";
 
 export interface OnChainAuthority {
   authorityAddress?: PublicKey;
@@ -108,8 +109,17 @@ export interface VerifyAuthorityCommitEndToEndInput extends Omit<
   expectedOwner?: PublicKey;
   /** Expected 32-byte authority label. */
   expectedLabel?: Uint8Array;
-  /** Expected compressed authority address. */
+  /**
+   * Optional sanity check: redundant against the address rederived from
+   * `(owner, label)` inside the verifier. If provided, it must match the
+   * derived address or `valid` flips false.
+   */
   expectedAuthorityAddress?: PublicKey;
+  /**
+   * Optional program ID override. Defaults to the canonical cc-vrf program
+   * ID and only needs to be set for forked deployments.
+   */
+  programId?: PublicKey;
   /** 64-byte beta fetched from a VrfProofCommitWithBeta account. */
   onChainBeta?: Uint8Array;
 }
@@ -235,12 +245,36 @@ export function verifyAuthorityCommitEndToEnd(
     : true;
   if (!authorityLabelMatches) reasons.push("authority-label-mismatch");
 
-  const expectedAuthorityAddress =
-    input.expectedAuthorityAddress ?? input.authority.authorityAddress;
-  const commitAuthorityMatches = expectedAuthorityAddress
-    ? input.onChainCommit.authority?.equals(expectedAuthorityAddress) === true
+  // Always rederive the canonical authority address from (owner, label) and
+  // require the commit to point at it. This closes the prior footgun where a
+  // hand-built OnChainAuthority + missing expectedAuthorityAddress silently
+  // skipped the commit-to-authority binding.
+  const programId = input.programId ?? CC_VRF_PROGRAM_ID;
+  const derivedAuthorityAddress = deriveAuthorityAddress(
+    input.authority.owner,
+    input.authority.label,
+    programId,
+  );
+  const commitAuthority = input.onChainCommit.authority;
+  const commitAuthorityMatches =
+    commitAuthority?.equals(derivedAuthorityAddress) === true;
+  if (!commitAuthorityMatches) {
+    reasons.push(
+      commitAuthority
+        ? "commit-authority-mismatch"
+        : "commit-authority-missing",
+    );
+  }
+
+  // If the caller passed their own expectedAuthorityAddress, it must also
+  // match the derived one — otherwise the caller's expectation contradicts
+  // the (owner, label) they supplied.
+  const expectedAuthorityMatchesDerived = input.expectedAuthorityAddress
+    ? input.expectedAuthorityAddress.equals(derivedAuthorityAddress)
     : true;
-  if (!commitAuthorityMatches) reasons.push("commit-authority-mismatch");
+  if (!expectedAuthorityMatchesDerived) {
+    reasons.push("expected-authority-address-mismatch");
+  }
 
   const betaMatches = input.onChainBeta
     ? base.beta !== null && bytesEqual(input.onChainBeta, base.beta)
@@ -254,6 +288,7 @@ export function verifyAuthorityCommitEndToEnd(
     authorityOwnerMatches &&
     authorityLabelMatches &&
     commitAuthorityMatches &&
+    expectedAuthorityMatchesDerived &&
     betaMatches !== false;
 
   return {
