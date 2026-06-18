@@ -1,5 +1,5 @@
 /**
- * @collectorcrypt/ecvrf
+ * @collector-crypt/ecvrf
  *
  * RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI implementation.
  *

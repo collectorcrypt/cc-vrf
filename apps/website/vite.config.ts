@@ -15,8 +15,8 @@ export default defineConfig({
     // ESM directly) can't named-import from them. Forcing them through
     // esbuild's pre-bundling converts them to ESM with named exports.
     include: [
-      "@collectorcrypt/ecvrf",
-      "@collectorcrypt/vrf-client",
+      "@collector-crypt/ecvrf",
+      "@collector-crypt/vrf-client",
       "@solana/web3.js",
       "@coral-xyz/anchor",
       "@lightprotocol/stateless.js",

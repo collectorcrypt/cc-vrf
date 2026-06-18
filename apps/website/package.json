@@ -1,5 +1,5 @@
 {
-  "name": "@collectorcrypt/cc-vrf-website",
+  "name": "@collector-crypt/cc-vrf-website",
   "version": "0.1.0",
   "private": true,
   "description": "cc-vrf marketing + demo site (Vite + React + Tailwind)",
@@ -10,8 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@collectorcrypt/ecvrf": "workspace:*",
-    "@collectorcrypt/vrf-client": "workspace:*",
+    "@collector-crypt/ecvrf": "workspace:*",
+    "@collector-crypt/vrf-client": "workspace:*",
     "@coral-xyz/anchor": "^0.32.1",
     "@lightprotocol/stateless.js": "^0.23.3",
     "@noble/hashes": "^2.2.0",

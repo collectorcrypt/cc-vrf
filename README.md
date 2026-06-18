@@ -2,18 +2,18 @@
 
 A standalone, permissionless on-chain VRF (Verifiable Random Function) system for Solana, built on Light Protocol compressed PDAs and Anchor log events. Live on **devnet + mainnet** at program ID `ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ`.
 
-- **Pure-JS ECVRF library** — `@collectorcrypt/ecvrf`. RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI. Byte-exact validated against an independent Rust reference (`vrf-rfc9381`) via 28 fixture-driven interop tests.
+- **Pure-JS ECVRF library** — `@collector-crypt/ecvrf`. RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI. Byte-exact validated against an independent Rust reference (`vrf-rfc9381`) via 28 fixture-driven interop tests.
 - **One proof, many random values** — `vrfStream(beta, ...path)` deterministically expands a single VRF output into an unbounded, domain-separated tree of typed values (`nextU32`, `nextRange`, `nextFloat`, `shuffle`, `pick`, `fork`). One on-chain commit can power thousands of dice rolls, card draws, or loot rolls; every value is reproducible — and therefore verifiable — by anyone holding the proof.
 - **Solana program** — locks each operator's public key on-chain via `init_authority` + `freeze_authority`, then only accepts commits from frozen, unrevoked authorities. It offers three commit variants per VRF call: `commit_proof` (compressed PDA), `commit_proof_with_beta` (same PDA namespace + on-chain beta for cross-program reads), and `commit_proof_event` (verified authority + log event only).
-- **TypeScript SDK** — `@collectorcrypt/vrf-client`. Wraps the Anchor IDL, all the Light Protocol plumbing (validity proofs, packed accounts, address-tree-v2), event-log scanning, and ships `verifyEndToEnd`, `verifyAuthorityCommitEndToEnd`, and `pickCanonicalCommit`.
+- **TypeScript SDK** — `@collector-crypt/vrf-client`. Wraps the Anchor IDL, all the Light Protocol plumbing (validity proofs, packed accounts, address-tree-v2), event-log scanning, and ships `verifyEndToEnd`, `verifyAuthorityCommitEndToEnd`, and `pickCanonicalCommit`.
 - **Reference CLI demo** — `apps/dice-demo`. End-to-end lifecycle (init → freeze → roll → verify → simulate) plus a `cost` command that measures real per-call SOL spend across all three modes.
 
 ## Repository layout
 
 ```
 programs/cc-vrf/             Solana program (Anchor 0.31.1 + light-sdk 0.23)
-packages/ecvrf/              @collectorcrypt/ecvrf — RFC 9381 Ed25519 ECVRF
-packages/vrf-client/         @collectorcrypt/vrf-client — TS SDK
+packages/ecvrf/              @collector-crypt/ecvrf — RFC 9381 Ed25519 ECVRF
+packages/vrf-client/         @collector-crypt/vrf-client — TS SDK
 apps/dice-demo/              End-to-end CLI demo
 tooling/witnet-vector-gen/   Rust binary that emits RFC 9381 fixtures
 target/                      Anchor build outputs (cc_vrf.so, IDL, TS types)
@@ -30,9 +30,9 @@ target/                      Anchor build outputs (cc_vrf.so, IDL, TS types)
 
 ```bash
 pnpm install
-pnpm --filter @collectorcrypt/ecvrf build
-pnpm --filter @collectorcrypt/vrf-client build
-pnpm --filter @collectorcrypt/dice-demo build
+pnpm --filter @collector-crypt/ecvrf build
+pnpm --filter @collector-crypt/vrf-client build
+pnpm --filter @collector-crypt/dice-demo build
 anchor build
 ```
 
@@ -40,13 +40,13 @@ anchor build
 
 ```bash
 # 68 tests: 28 RFC 9381 byte-exact interop + structure + round-trip + negative cases + stream expander
-pnpm --filter @collectorcrypt/ecvrf test
+pnpm --filter @collector-crypt/ecvrf test
 
 # 26 tests: SDK pure-function tests (verifyEndToEnd math, authority checks, PDA + with-beta derivation, pickCanonicalCommit)
-pnpm --filter @collectorcrypt/vrf-client test
+pnpm --filter @collector-crypt/vrf-client test
 
 # 2 tests: demo CLI state-file round-trip
-pnpm --filter @collectorcrypt/dice-demo test
+pnpm --filter @collector-crypt/dice-demo test
 
 # Or all of the above:
 pnpm test
@@ -115,7 +115,7 @@ The risk isn't fraud (the math forbids it), it's an **"inability to prove which 
 | Two distinct garbage events, no real one | accepts garbage | rejects both — attack detected |
 | Operator pre-commits many memos, picks favorable later | same risk as registry mode (protocol-level memo selection issue, mitigated by letting the user choose the memo) | same |
 
-`@collectorcrypt/vrf-client` ships `pickCanonicalCommit` plus `verifyAuthorityCommitEndToEnd` to handle duplicate detection, authority lifecycle checks, suite checks, and beta checks. If your verifier uses them, event mode keeps the same cryptographic soundness as registry mode; it only gives up chain-enforced memo uniqueness.
+`@collector-crypt/vrf-client` ships `pickCanonicalCommit` plus `verifyAuthorityCommitEndToEnd` to handle duplicate detection, authority lifecycle checks, suite checks, and beta checks. If your verifier uses them, event mode keeps the same cryptographic soundness as registry mode; it only gives up chain-enforced memo uniqueness.
 
 ## End-to-end devnet smoke
 
@@ -155,7 +155,7 @@ To run the smoke test as part of `pnpm test`:
 
 ```bash
 CC_VRF_SMOKE=1 CC_VRF_SMOKE_PAYER=$HOME/.config/solana/id.json \
-  pnpm --filter @collectorcrypt/dice-demo test
+  pnpm --filter @collector-crypt/dice-demo test
 ```
 
 ## Security model
@@ -166,7 +166,7 @@ The program does **three** things and only three things:
 2. **Mark authorities ready.** `freeze_authority` is one-way, and all commit instructions require `frozen=true` and `revoked=false`.
 3. **Commit proof hashes** (and optionally beta values). Registry modes create a compressed commit record; event mode emits a log after proving the authority read-only. The operator cannot replace a committed proof without detection.
 
-The program does **not** custody keys, evaluate randomness, or run ECVRF verification on-chain. Each operator runs their own VRF (env vars, Nitro Enclave, threshold scheme — their choice) and posts hashes. Verifiers pull the on-chain commit plus the operator-published proof and run `verifyAuthorityCommitEndToEnd` from `@collectorcrypt/vrf-client`.
+The program does **not** custody keys, evaluate randomness, or run ECVRF verification on-chain. Each operator runs their own VRF (env vars, Nitro Enclave, threshold scheme — their choice) and posts hashes. Verifiers pull the on-chain commit plus the operator-published proof and run `verifyAuthorityCommitEndToEnd` from `@collector-crypt/vrf-client`.
 
 **Trust model:** trust the operator who registered and froze the pk to honestly produce VRF proofs. The on-chain commitments make proof substitution detectable. In registry mode the chain also enforces one registry commit per memo across plain and beta variants; in event mode memo uniqueness shifts to the verifier (see "What event mode loses" above).
 

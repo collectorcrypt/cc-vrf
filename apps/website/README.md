@@ -8,8 +8,8 @@ Vite + React + Tailwind 4, deployable to Vercel as a static SPA.
 ```bash
 # from repo root
 pnpm install
-pnpm --filter @collectorcrypt/ecvrf build
-pnpm --filter @collectorcrypt/vrf-client build
+pnpm --filter @collector-crypt/ecvrf build
+pnpm --filter @collector-crypt/vrf-client build
 
 # then
 cd apps/website

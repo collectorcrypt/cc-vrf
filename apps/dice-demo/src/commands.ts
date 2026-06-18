@@ -27,7 +27,7 @@ import {
   pickCanonicalCommit,
   verifyAuthorityCommitEndToEnd,
   encodeLabel,
-} from "@collectorcrypt/vrf-client";
+} from "@collector-crypt/vrf-client";
 
 import { buildAnchorProvider, buildLightRpc, loadPayer } from "./connection";
 import { loadState, saveState } from "./state";

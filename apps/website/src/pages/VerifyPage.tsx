@@ -11,7 +11,7 @@ import {
   pickCanonicalCommit,
   verifyAuthorityCommitEndToEnd,
   type VerifyAuthorityCommitEndToEndResult,
-} from "@collectorcrypt/vrf-client";
+} from "@collector-crypt/vrf-client";
 import {
   defaultRpcForCluster,
   explorerAddressUrlFor,

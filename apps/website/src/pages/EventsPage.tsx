@@ -184,7 +184,7 @@ export function EventsPage() {
             <span className="text-ink-50 font-semibold">
               Use <code className="font-mono">pickCanonicalCommit</code>
             </span>{" "}
-            from <code className="font-mono">@collectorcrypt/vrf-client</code>{" "}
+            from <code className="font-mono">@collector-crypt/vrf-client</code>{" "}
             and you&rsquo;re a careful verifier by default.
           </p>
         </div>
@@ -203,7 +203,7 @@ export function EventsPage() {
   fetchProofCommitEvents,
   pickCanonicalCommit,
   verifyAuthorityCommitEndToEnd,
-} from "@collectorcrypt/vrf-client";
+} from "@collector-crypt/vrf-client";
 
 // 1. Commit (operator side)
 const ix = await buildCommitProofEventIx(program, rpc, {

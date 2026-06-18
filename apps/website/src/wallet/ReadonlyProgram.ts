@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { createRpc, Rpc } from "@lightprotocol/stateless.js";
-import { getProgram } from "@collectorcrypt/vrf-client";
+import { getProgram } from "@collector-crypt/vrf-client";
 
 /**
  * Read-only flows (fetchAuthority, fetchProofCommit) need an AnchorProvider

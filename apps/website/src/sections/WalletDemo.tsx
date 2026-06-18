@@ -20,7 +20,7 @@ import {
   fetchProofCommit,
   verifyAuthorityCommitEndToEnd,
   encodeLabel,
-} from "@collectorcrypt/vrf-client";
+} from "@collector-crypt/vrf-client";
 
 import {
   buildProgramFromWallet,
@@ -53,7 +53,7 @@ const SAMPLE_CODE = `import {
   verifyAuthorityCommitEndToEnd,
   encodeLabel,
   SUITE_EDWARDS25519_SHA512_TAI,
-} from "@collectorcrypt/vrf-client";
+} from "@collector-crypt/vrf-client";
 
 // 1. Generate a VRF keypair (operator-side, off-chain).
 const { sk, pk } = generateKeyPair();

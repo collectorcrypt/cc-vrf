@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PublicKey } from "@solana/web3.js";
-import { bytesToHex, fetchAuthority } from "@collectorcrypt/vrf-client";
+import { bytesToHex, fetchAuthority } from "@collector-crypt/vrf-client";
 import {
   defaultRpcForCluster,
   explorerAddressUrlFor,

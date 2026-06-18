@@ -28,7 +28,7 @@ import {
   pickCanonicalCommit,
   verifyAuthorityCommitEndToEnd,
   encodeLabel,
-} from "@collectorcrypt/vrf-client";
+} from "@collector-crypt/vrf-client";
 
 /**
  * Live smoke test. Skipped by default. Run with:
@@ -36,7 +36,7 @@ import {
  *   CC_VRF_SMOKE=1 \
  *   CC_VRF_RPC_URL=https://devnet.helius-rpc.com/?api-key=... \
  *   CC_VRF_SMOKE_PAYER=/path/to/funded-devnet-id.json \
- *   pnpm --filter @collectorcrypt/dice-demo test
+ *   pnpm --filter @collector-crypt/dice-demo test
  *
  * Exercises the full lifecycle on a live cluster:
  *   1. init_authority for a fresh label
