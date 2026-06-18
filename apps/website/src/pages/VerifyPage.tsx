@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
-import { sha256 } from "@noble/hashes/sha2.js";
 import {
   fetchAuthority,
   fetchProofCommit,
@@ -31,16 +30,23 @@ type VerifyOutcome = {
   candidateCount?: number;
 };
 
+// Deep-link prefill: read params from the hash query string (e.g. #/verify?memo=...&proof=...).
+function hashParams(): URLSearchParams {
+  if (typeof window === "undefined") return new URLSearchParams();
+  return new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+}
+
 export function VerifyPage() {
-  const [cluster, setCluster] = useState<Cluster>("mainnet");
-  const [rpcUrl, setRpcUrl] = useState<string>(defaultRpcForCluster("mainnet"));
-  const [mode, setMode] = useState<Mode>("registry");
-  const [owner, setOwner] = useState("");
-  const [label, setLabel] = useState("");
-  const [memo, setMemo] = useState("");
-  const [proofHex, setProofHex] = useState("");
-  const [alphaHex, setAlphaHex] = useState("");
-  const [autoAlpha, setAutoAlpha] = useState(true);
+  const p = hashParams();
+  const initCluster = (p.get("cluster") as Cluster) || "mainnet";
+  const [cluster, setCluster] = useState<Cluster>(initCluster);
+  const [rpcUrl, setRpcUrl] = useState<string>(p.get("rpc") || defaultRpcForCluster(initCluster));
+  const [mode, setMode] = useState<Mode>((p.get("mode") as Mode) || "registry");
+  const [owner, setOwner] = useState(p.get("owner") || "");
+  const [label, setLabel] = useState(p.get("label") || "");
+  const [memo, setMemo] = useState(p.get("memo") || "");
+  const [proofHex, setProofHex] = useState(p.get("proof") || "");
+  const [alphaHex, setAlphaHex] = useState(p.get("alpha") || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<VerifyOutcome | null>(null);
@@ -50,8 +56,7 @@ export function VerifyPage() {
     setRpcUrl(defaultRpcForCluster(next));
   }
 
-  async function verify(e: React.FormEvent) {
-    e.preventDefault();
+  async function runVerify() {
     setError(null);
     setOutcome(null);
     setLoading(true);
@@ -75,16 +80,13 @@ export function VerifyPage() {
         throw new Error(`proof must be 80 bytes (got ${proof.length})`);
       }
 
-      const memoBytes = new TextEncoder().encode(memo);
-      const alpha = autoAlpha
-        ? sha256(memoBytes)
-        : (() => {
-            try {
-              return hexToBytes(alphaHex.trim());
-            } catch {
-              throw new Error("alpha must be a hex string");
-            }
-          })();
+      if (!alphaHex.trim()) throw new Error("alpha is required");
+      let alpha: Uint8Array;
+      try {
+        alpha = hexToBytes(alphaHex.trim());
+      } catch {
+        throw new Error("alpha must be a hex string");
+      }
 
       const { program, rpc, connection } = buildReadOnlyProgram(rpcUrl);
       const auth = await fetchAuthority(program, rpc, ownerPk, label);
@@ -168,6 +170,12 @@ export function VerifyPage() {
     }
   }
 
+  // Auto-verify when arriving via a fully-populated deep link.
+  useEffect(() => {
+    if (owner && label && memo && proofHex && alphaHex) runVerify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <main className="flex flex-col gap-12 pb-24 pt-12 sm:pt-20">
       <section className="container-wide flex flex-col gap-6">
@@ -193,7 +201,7 @@ export function VerifyPage() {
       </section>
 
       <section className="container-wide flex flex-col gap-4">
-        <form onSubmit={verify} className="card flex flex-col gap-4">
+        <form onSubmit={(e) => { e.preventDefault(); runVerify(); }} className="card flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
               Cluster
@@ -309,30 +317,19 @@ export function VerifyPage() {
             />
           </label>
 
-          <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-xs text-ink-300">
-              <input
-                type="checkbox"
-                checked={autoAlpha}
-                onChange={(e) => setAutoAlpha(e.target.checked)}
-              />
-              alpha = sha256(memo) (standard convention)
-            </label>
-            {!autoAlpha && (
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-                  Alpha (hex)
-                </span>
-                <input
-                  type="text"
-                  value={alphaHex}
-                  onChange={(e) => setAlphaHex(e.target.value)}
-                  className="rounded-md border border-ink-800 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-100 focus:border-accent-500 focus:outline-none"
-                  required={!autoAlpha}
-                />
-              </label>
-            )}
-          </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+              Alpha (hex) — the VRF input
+            </span>
+            <input
+              type="text"
+              value={alphaHex}
+              onChange={(e) => setAlphaHex(e.target.value)}
+              className="rounded-md border border-ink-800 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-100 focus:border-accent-500 focus:outline-none"
+              placeholder="operator-specific input bytes (e.g. sha256(memo), or a signature-derived value)"
+              required
+            />
+          </label>
 
           <button
             type="submit"

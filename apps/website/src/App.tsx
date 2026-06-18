@@ -65,10 +65,11 @@ export function App() {
   }, [hash]);
 
   let page: React.ReactNode;
-  if (hash === "#/registry") page = <RegistryPage />;
-  else if (hash === "#/events") page = <EventsPage />;
-  else if (hash === "#/lookup") page = <LookupPage />;
-  else if (hash === "#/verify") page = <VerifyPage />;
+  const path = hash.split("?")[0]; // route on the path; ignore deep-link query params
+  if (path === "#/registry") page = <RegistryPage />;
+  else if (path === "#/events") page = <EventsPage />;
+  else if (path === "#/lookup") page = <LookupPage />;
+  else if (path === "#/verify") page = <VerifyPage />;
   else page = <Landing />;
 
   return <WalletProviders>{page}</WalletProviders>;
