@@ -250,18 +250,6 @@ export function VerifyPage() {
             </div>
           </div>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-              RPC URL (Photon-capable)
-            </span>
-            <input
-              type="text"
-              value={rpcUrl}
-              onChange={(e) => setRpcUrl(e.target.value)}
-              className="rounded-md border border-ink-800 bg-ink-950 px-3 py-2 font-mono text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
-            />
-          </label>
-
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
