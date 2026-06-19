@@ -1,6 +1,6 @@
 {
   "name": "@collectorcrypt/vrf-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript SDK for the cc-vrf on-chain VRF program (Solana + Light Protocol)",
   "license": "MIT",
   "main": "dist/index.js",
