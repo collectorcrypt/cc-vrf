@@ -1,4 +1,8 @@
-import { GITHUB_URL } from "../data/constants";
+import {
+  GITHUB_URL,
+  NPM_ECVRF_URL,
+  NPM_VRF_CLIENT_URL,
+} from "../data/constants";
 
 export function Footer() {
   return (
@@ -12,6 +16,22 @@ export function Footer() {
           <a className="hover:text-ink-200" href={GITHUB_URL}>
             GitHub
           </a>
+          <a
+            className="hover:text-ink-200"
+            href={NPM_ECVRF_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            npm: ecvrf
+          </a>
+          <a
+            className="hover:text-ink-200"
+            href={NPM_VRF_CLIENT_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            npm: vrf-client
+          </a>
           <a className="hover:text-ink-200" href="#client-demo">
             Demo
           </a>
@@ -20,6 +40,9 @@ export function Footer() {
           </a>
           <a className="hover:text-ink-200" href="#get-started">
             Get started
+          </a>
+          <a className="hover:text-ink-200" href="#references">
+            References
           </a>
         </nav>
       </div>

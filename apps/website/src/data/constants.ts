@@ -2,6 +2,81 @@ export const CC_VRF_PROGRAM_ID = "ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ";
 
 export const GITHUB_URL = "https://github.com/collectorcrypt/cc-vrf";
 
+export const NPM_ECVRF_URL =
+  "https://www.npmjs.com/package/@collectorcrypt/ecvrf";
+
+export const NPM_VRF_CLIENT_URL =
+  "https://www.npmjs.com/package/@collectorcrypt/vrf-client";
+
+export interface ReferenceLink {
+  title: string;
+  href: string;
+  note: string;
+}
+
+export interface ReferenceGroup {
+  heading: string;
+  links: ReferenceLink[];
+}
+
+/**
+ * External reading on the cryptography cc-vrf is built on. Grouped by the
+ * standards we implement, the academic background, and the audited libraries
+ * we depend on.
+ */
+export const REFERENCES: ReferenceGroup[] = [
+  {
+    heading: "Standards we implement",
+    links: [
+      {
+        title: "RFC 9381 — Verifiable Random Functions (VRFs)",
+        href: "https://www.rfc-editor.org/rfc/rfc9381.html",
+        note: "The IRTF CFRG standard cc-vrf implements end-to-end. §5.5 defines the ECVRF-EDWARDS25519-SHA512-TAI ciphersuite (suite 0x03) we use.",
+      },
+      {
+        title: "RFC 8032 — Edwards-Curve Digital Signature Algorithm (EdDSA)",
+        href: "https://www.rfc-editor.org/rfc/rfc8032.html",
+        note: "Defines Ed25519 and the edwards25519 key/scalar derivation (§5.1.5) the VRF prover reuses.",
+      },
+      {
+        title: "RFC 7748 — Elliptic Curves for Security",
+        href: "https://www.rfc-editor.org/rfc/rfc7748.html",
+        note: "Specifies Curve25519 / edwards25519 — the elliptic curve underneath the whole scheme.",
+      },
+    ],
+  },
+  {
+    heading: "Background",
+    links: [
+      {
+        title: "Verifiable Random Functions — Micali, Rabin & Vadhan (FOCS 1999)",
+        href: "https://people.seas.harvard.edu/~salil/research/VRF-abs.html",
+        note: "The original paper that introduced the VRF primitive.",
+      },
+      {
+        title: "Verifiable random function — Wikipedia",
+        href: "https://en.wikipedia.org/wiki/Verifiable_random_function",
+        note: "A plain-English overview of what a VRF is and where they're used.",
+      },
+    ],
+  },
+  {
+    heading: "Audited libraries we build on",
+    links: [
+      {
+        title: "@noble/ed25519",
+        href: "https://github.com/paulmillr/noble-ed25519",
+        note: "The audited, dependency-free Ed25519 implementation our curve math runs on.",
+      },
+      {
+        title: "@noble/hashes",
+        href: "https://github.com/paulmillr/noble-hashes",
+        note: "Audited SHA-512 / SHA-256 used for hashing, challenges, and commitments.",
+      },
+    ],
+  },
+];
+
 export type Cluster = "devnet" | "mainnet";
 
 /**

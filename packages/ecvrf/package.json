@@ -1,6 +1,6 @@
 {
   "name": "@collectorcrypt/ecvrf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI verifiable random function (pure JS)",
   "license": "MIT",
   "main": "dist/index.js",

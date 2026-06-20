@@ -1,5 +1,10 @@
 import { CodeBlock } from "../components/CodeBlock";
-import { CC_VRF_PROGRAM_ID, GITHUB_URL } from "../data/constants";
+import {
+  CC_VRF_PROGRAM_ID,
+  GITHUB_URL,
+  NPM_ECVRF_URL,
+  NPM_VRF_CLIENT_URL,
+} from "../data/constants";
 
 const INSTALL = `pnpm add @collectorcrypt/vrf-client @lightprotocol/stateless.js @coral-xyz/anchor @solana/web3.js`;
 
@@ -76,15 +81,27 @@ export function GetStarted() {
             <h3 className="subsection-title">Packages</h3>
             <ul className="space-y-1 text-sm text-ink-300">
               <li>
-                <code className="font-mono text-ink-100">
+                <a
+                  className="font-mono text-accent-400 hover:underline"
+                  href={NPM_ECVRF_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="View @collectorcrypt/ecvrf on npm"
+                >
                   @collectorcrypt/ecvrf
-                </code>{" "}
+                </a>{" "}
                 &mdash; RFC 9381 Ed25519 ECVRF (zero Solana deps).
               </li>
               <li>
-                <code className="font-mono text-ink-100">
+                <a
+                  className="font-mono text-accent-400 hover:underline"
+                  href={NPM_VRF_CLIENT_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="View @collectorcrypt/vrf-client on npm"
+                >
                   @collectorcrypt/vrf-client
-                </code>{" "}
+                </a>{" "}
                 &mdash; on-chain SDK + full verification helpers.
               </li>
             </ul>

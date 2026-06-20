@@ -10,6 +10,7 @@ import { CostComparison } from "./sections/CostComparison";
 import { ClaudeSkill } from "./sections/ClaudeSkill";
 import { GetStarted } from "./sections/GetStarted";
 import { Tools } from "./sections/Tools";
+import { References } from "./sections/References";
 import { Footer } from "./sections/Footer";
 import { WalletProviders } from "./wallet/WalletProviders";
 import { RegistryPage } from "./pages/RegistryPage";
@@ -48,6 +49,7 @@ function Landing() {
       <Tools />
       <ClaudeSkill />
       <GetStarted />
+      <References />
       <Footer />
     </main>
   );
