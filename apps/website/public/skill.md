@@ -52,7 +52,7 @@ pnpm add @collectorcrypt/vrf-client @lightprotocol/stateless.js \
 If installing from source (packages not yet on npm):
 
 ```bash
-git clone https://github.com/daxherrera/cc-vrf.git
+git clone https://github.com/collectorcrypt/cc-vrf.git
 cd cc-vrf && pnpm install
 pnpm --filter @collectorcrypt/ecvrf build
 pnpm --filter @collectorcrypt/vrf-client build
@@ -213,7 +213,7 @@ export async function POST(req: Request) {
 - **Clusters:** devnet + mainnet (live; upgrade authority held by the deployer)
 - **Browse operators:** https://vrf.collectorcrypt.com/#/lookup
 - **Verify a roll:** https://vrf.collectorcrypt.com/#/verify
-- **Source:** https://github.com/daxherrera/cc-vrf
+- **Source:** https://github.com/collectorcrypt/cc-vrf
 - **Spec:** RFC 9381 §5.5 (ECVRF-EDWARDS25519-SHA512-TAI, suite identifier `0x03`)
 - **Compressed PDA backend:** Light Protocol v2 (`@lightprotocol/stateless.js` 0.23.x)
 - **Tests:** 50 ECVRF interop + structure + negative-case tests (byte-exact vs the Rust reference impl), plus 26 SDK unit tests.
