@@ -5,7 +5,7 @@ export function Tools() {
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
           For consumers
         </span>
-        <h2 className="section-title">Verify any operator&rsquo;s proofs.</h2>
+        <h2 className="section-title">Trust, but verify.</h2>
         <p className="max-w-3xl text-ink-300">
           Two no-code tools for anyone integrating against a cc-vrf operator.
           Both work against devnet and mainnet, with any Photon-capable RPC.
