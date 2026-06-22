@@ -30,11 +30,11 @@ export function GetStarted() {
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
           Get started
         </span>
-        <h2 className="section-title">Five lines to verifiable randomness.</h2>
+        <h2 className="section-title">A few lines to verifiable randomness.</h2>
         <p className="max-w-3xl text-ink-300">
-          The pure-JS ECVRF library is independently useful even without the
-          on-chain pieces. Drop it in anywhere you need RFC 9381 randomness; add
-          the SDK + program when you&rsquo;re ready to commit proofs to chain.
+          The pure-JS ECVRF library works on its own, with no on-chain
+          dependency. Use it anywhere you need RFC 9381 randomness; add the SDK
+          and program to commit proofs on-chain.
         </p>
       </header>
 
@@ -51,25 +51,24 @@ export function GetStarted() {
           <div className="card flex flex-col gap-2">
             <h3 className="subsection-title">On-chain program</h3>
             <p className="text-sm text-ink-300">
-              Live on Solana devnet (mainnet deploy is the next milestone).
-              Permissionless &mdash; you don&rsquo;t need our blessing to use
-              it.
+              Live on Solana devnet and mainnet &mdash; same program ID, same
+              bytecode. Permissionless.
             </p>
             <dl className="kv">
               <dt>program id</dt>
               <dd>
                 <a
                   className="font-mono text-accent-400 hover:underline"
-                  href={`https://explorer.solana.com/address/${CC_VRF_PROGRAM_ID}?cluster=devnet`}
+                  href={`https://explorer.solana.com/address/${CC_VRF_PROGRAM_ID}`}
                   target="_blank"
                   rel="noreferrer"
-                  title="View on Solana Explorer (devnet)"
+                  title="View on Solana Explorer (mainnet)"
                 >
                   {CC_VRF_PROGRAM_ID}
                 </a>
               </dd>
               <dt>cluster</dt>
-              <dd>devnet</dd>
+              <dd>devnet + mainnet</dd>
               <dt>idl + types</dt>
               <dd>
                 included in{" "}
@@ -102,15 +101,15 @@ export function GetStarted() {
                 >
                   @collectorcrypt/vrf-client
                 </a>{" "}
-                &mdash; on-chain SDK + full verification helpers.
+                &mdash; on-chain SDK and verification helpers.
               </li>
             </ul>
           </div>
           <div className="card flex flex-col gap-2">
             <h3 className="subsection-title">Source &amp; reference demo</h3>
             <p className="text-sm text-ink-300">
-              Full repo, demo CLI, RFC 9381 fixture generator, and 50-test
-              cryptography suite live on GitHub.
+              Repo, demo CLI, RFC 9381 fixture generator, and 50-test crypto
+              suite on GitHub.
             </p>
             <a className="btn-primary self-start" href={GITHUB_URL}>
               cc-vrf on GitHub

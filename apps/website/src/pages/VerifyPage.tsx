@@ -189,10 +189,9 @@ export function VerifyPage() {
           Verify a roll
         </h1>
         <p className="max-w-3xl text-lg text-ink-300">
-          Paste an operator&rsquo;s published proof and we&rsquo;ll fetch the
-          on-chain commit, re-run the ECVRF math, and check every invariant.
-          Green across the board means the random value provably came from the
-          frozen public key you can see on the{" "}
+          Paste a published proof. This fetches the on-chain commit, re-runs the
+          ECVRF verification, and checks every invariant. If all checks pass, the
+          random value is bound to the frozen public key on the{" "}
           <a href="#/lookup" className="text-accent-300 hover:underline">
             lookup page
           </a>

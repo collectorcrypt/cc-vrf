@@ -237,10 +237,11 @@ export function WalletDemo() {
           Demo 2 &middot; live devnet via wallet
         </span>
         <h2 className="section-title">
-          Roll, commit, verify &mdash; signed by your wallet on devnet.
+          Roll, commit, and verify with your own wallet.
         </h2>
         <p className="max-w-3xl text-ink-300">
-          Connect a wallet, generate a VRF keypair in-browser, and sign the real{" "}
+          Connect a wallet and generate a VRF keypair in-browser. The buttons
+          sign live{" "}
           <code className="font-mono">init_authority</code>,{" "}
           <code className="font-mono">freeze_authority</code>, and{" "}
           <code className="font-mono">commit_proof</code> instructions against
@@ -253,8 +254,8 @@ export function WalletDemo() {
             title="View program on Solana Explorer (devnet)"
           >
             ccvrfu3fSp…HqGtdgQ
-          </a>{" "}
-          on devnet. Each roll is then fetched back and run through{" "}
+          </a>
+          . Each roll is fetched back and re-checked with{" "}
           <code className="font-mono">verifyAuthorityCommitEndToEnd</code>.
         </p>
       </header>
@@ -263,9 +264,9 @@ export function WalletDemo() {
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
           <strong>RPC notice.</strong> Your configured RPC{" "}
           <span className="font-mono">{VITE_RPC_URL}</span> may not serve Light
-          Photon. The SDK&rsquo;s validity-proof endpoint will fail without it
-          &mdash; set <code className="font-mono">VITE_CC_VRF_RPC_URL</code> to
-          a Helius/Triton devnet endpoint.
+          Photon. The SDK&rsquo;s validity-proof endpoint will fail without it.
+          Set <code className="font-mono">VITE_CC_VRF_RPC_URL</code> to a
+          Helius/Triton devnet endpoint.
         </div>
       )}
 

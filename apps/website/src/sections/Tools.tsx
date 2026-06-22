@@ -5,11 +5,10 @@ export function Tools() {
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
           For consumers
         </span>
-        <h2 className="section-title">Trust, but verify.</h2>
+        <h2 className="section-title">Verify any operator&rsquo;s proofs.</h2>
         <p className="max-w-3xl text-ink-300">
           Two no-code tools for anyone integrating against a cc-vrf operator.
-          Both work against devnet and mainnet, with whatever Photon-capable RPC
-          you bring.
+          Both work against devnet and mainnet, with any Photon-capable RPC.
         </p>
       </header>
 
@@ -26,8 +25,7 @@ export function Tools() {
           </div>
           <p className="text-sm text-ink-300">
             Paste an operator&rsquo;s owner pubkey + label. See the registered
-            public key, suite, freeze status, and revoke flag. Confirms what
-            you&rsquo;re trusting before you accept any of their proofs.
+            public key, suite, freeze status, and revoke flag.
           </p>
           <span className="mt-1 text-xs font-mono text-accent-400 group-hover:underline">
             open lookup &rarr;
@@ -45,10 +43,10 @@ export function Tools() {
             </h3>
           </div>
           <p className="text-sm text-ink-300">
-            Paste the operator&rsquo;s published proof for a specific memo. We
-            fetch the on-chain commit, re-run ECVRF, and check every invariant.
-            Green across the board means the random value provably came from the
-            locked public key.
+            Paste the operator&rsquo;s published proof for a specific memo. This
+            fetches the on-chain commit, re-runs ECVRF, and checks every
+            invariant. All checks passing means the value provably came from the
+            registered key.
           </p>
           <span className="mt-1 text-xs font-mono text-accent-400 group-hover:underline">
             open verifier &rarr;

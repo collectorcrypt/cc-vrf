@@ -24,16 +24,15 @@ export function RegistryPage() {
           <code className="font-mono text-ink-100">
             (authority, sha256(memo))
           </code>
-          . The chain itself enforces one commitment per memo &mdash; even a
-          careless verifier can&rsquo;t be tricked into reading the wrong
-          record.
+          . The program enforces one commitment per memo, so a buggy verifier
+          can&rsquo;t read the wrong record.
         </p>
         <p className="max-w-3xl text-base text-ink-400">
           This page also covers the{" "}
           <code className="font-mono text-ink-200">commit_proof_with_beta</code>{" "}
-          sub-variant &mdash; same PDA mode, but also persists the 64-byte ECVRF
-          beta on chain so other Solana programs can consume the random value
-          directly. Same cost as plain registry mode, just more bytes per leaf.
+          sub-variant: same PDA mode, but it also persists the 64-byte ECVRF
+          beta on chain so other Solana programs can read the random value
+          directly.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Stat
@@ -64,9 +63,8 @@ export function RegistryPage() {
           </Bullet>
           <Bullet>
             <strong className="text-ink-50">High-stakes randomness.</strong>{" "}
-            Lotteries, public draws, governance &mdash; cases where &ldquo;just
-            trust the operator + cryptography&rdquo; isn&rsquo;t enough, and you
-            want the chain itself to enforce uniqueness.
+            Lotteries, public draws, governance &mdash; cases where you want
+            on-chain uniqueness, not just operator trust.
           </Bullet>
           <Bullet>
             <strong className="text-ink-50">
@@ -142,19 +140,11 @@ export function RegistryPage() {
         <p className="max-w-3xl text-ink-300">
           By default,{" "}
           <code className="font-mono text-ink-100">commit_proof</code> stores
-          only hashes on chain &mdash; the 80-byte ECVRF proof and the 64-byte
-          beta output live off-chain. That&rsquo;s fine when a human or web
-          service verifies the result, but if{" "}
-          <span className="text-ink-50">another Solana program</span> wants to
-          read the random number directly, it has no way to do that from the
-          hash alone.
-        </p>
-        <p className="max-w-3xl text-ink-300">
-          The{" "}
+          only hashes on chain, so an on-chain consumer can&rsquo;t read the
+          random value. The{" "}
           <code className="font-mono text-ink-100">commit_proof_with_beta</code>{" "}
-          variant stores the full 64-byte beta in the compressed PDA alongside
-          the hashes. Any other program can then read the random value via a
-          Light SDK CPI &mdash; no off-chain fetch needed.
+          variant also stores the full 64-byte beta in the PDA, so other
+          programs can read it via a Light SDK CPI.
         </p>
 
         <div className="overflow-x-auto rounded-xl border border-ink-800">
@@ -183,9 +173,7 @@ export function RegistryPage() {
                   Cost per call (measured)
                 </td>
                 <td className="px-4 py-3 align-top font-mono">~$0.0027</td>
-                <td className="px-4 py-3 align-top font-mono">
-                  ~$0.0027 (same!)
-                </td>
+                <td className="px-4 py-3 align-top font-mono">~$0.0027</td>
               </tr>
               <tr className="border-t border-ink-800">
                 <td className="px-4 py-3 align-top font-medium text-ink-100">

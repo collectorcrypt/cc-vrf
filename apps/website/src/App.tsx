@@ -13,6 +13,7 @@ import { Tools } from "./sections/Tools";
 import { References } from "./sections/References";
 import { Footer } from "./sections/Footer";
 import { WalletProviders } from "./wallet/WalletProviders";
+import { TopNav } from "./components/TopNav";
 import { RegistryPage } from "./pages/RegistryPage";
 import { EventsPage } from "./pages/EventsPage";
 import { LookupPage } from "./pages/LookupPage";
@@ -74,5 +75,10 @@ export function App() {
   else if (path === "#/verify") page = <VerifyPage />;
   else page = <Landing />;
 
-  return <WalletProviders>{page}</WalletProviders>;
+  return (
+    <WalletProviders>
+      <TopNav />
+      {page}
+    </WalletProviders>
+  );
 }

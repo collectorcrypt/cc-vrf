@@ -97,16 +97,14 @@ export function ClientDemo() {
           Demo 1 &middot; pure client-side
         </span>
         <h2 className="section-title">
-          Verifiable randomness, generated in your browser.
+          Verifiable randomness in your browser.
         </h2>
         <p className="max-w-3xl text-ink-300">
           This demo runs{" "}
-          <code className="font-mono">@collectorcrypt/ecvrf</code> directly in
-          your browser &mdash; no wallet, no chain, no server. Each click
-          generates an RFC 9381 proof from the in-memory keypair, runs the
-          verifier on it, and shows the resulting beta. Identical math to what
-          an operator would publish; the only thing missing is the on-chain
-          commit.
+          <code className="font-mono">@collectorcrypt/ecvrf</code> in your
+          browser. No wallet, server, or chain. Each click generates an RFC 9381
+          proof from the in-memory keypair, verifies it, and shows the resulting
+          beta.
         </p>
       </header>
 
@@ -119,7 +117,7 @@ export function ClientDemo() {
             </button>
           </div>
           <label className="flex flex-col gap-1 text-sm text-ink-300">
-            memo (anything; hashes to alpha)
+            memo (hashed to alpha)
             <input
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
@@ -208,7 +206,7 @@ export function ClientDemo() {
       )}
 
       <div className="flex flex-col gap-2">
-        <h3 className="subsection-title text-sm">The whole code</h3>
+        <h3 className="subsection-title text-sm">Full example</h3>
         <CodeBlock code={SAMPLE_CODE} />
       </div>
     </section>

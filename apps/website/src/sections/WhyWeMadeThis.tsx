@@ -20,8 +20,8 @@ export function WhyWeMadeThis() {
           <h3 className="subsection-title">Who we are</h3>
           <p className="text-sm text-ink-300">
             Collector Crypt runs the largest physical-collectibles marketplace
-            on Solana. Tens of thousands of cards, sales, auctions, and
-            settlements move through our contracts every week.
+            on Solana. Tens of thousands of transactions move through our
+            contracts every week.
           </p>
         </div>
 
@@ -29,10 +29,7 @@ export function WhyWeMadeThis() {
           <h3 className="subsection-title">The problem</h3>
           <p className="text-sm text-ink-300">
             At our scale, even <span className="text-ink-100">four cents</span>{" "}
-            per VRF call meant hundreds of thousands of dollars in randomness
-            fees alone. Switchboard, ORAO, Chainlink &mdash; all priced for a
-            world where you call VRF a few times a day, not on every pack
-            opening or auction settle.
+            per VRF call meant hundreds of thousands of dollars a year.
           </p>
         </div>
 
@@ -42,10 +39,9 @@ export function WhyWeMadeThis() {
             <code className="font-mono text-ink-100">cc-vrf</code> drops the
             per-call cost to <span className="text-ink-100">~$0.0009</span> in
             event mode and <span className="text-ink-100">~$0.0027</span> in
-            registry mode via Light Protocol compressed PDAs and log-only event
-            commits &mdash; hundreds of times cheaper than Switchboard.
-            We&rsquo;re shipping it open so the next generation of web3 apps and
-            games doesn&rsquo;t have to make the same trade-off we did.
+            registry mode, using Light Protocol compressed PDAs and log-only
+            event commits. We open-sourced it so other Solana apps and games
+            don&rsquo;t have to pay for randomness.
           </p>
         </div>
       </div>

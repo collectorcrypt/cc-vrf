@@ -13,8 +13,7 @@ export function Hero() {
         </h1>
         <p className="max-w-2xl text-lg text-ink-300">
           Permissionless on-chain randomness for Solana. RFC 9381 ECVRF, live on
-          devnet and mainnet, every roll publicly verifiable. From{" "}
-          <span className="font-mono text-ink-100">$0.0009</span> per call.
+          devnet and mainnet. Every roll is publicly verifiable.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <a className="btn-primary" href="#get-started">

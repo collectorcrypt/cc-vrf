@@ -94,8 +94,7 @@ export function LookupPage() {
         <p className="max-w-3xl text-lg text-ink-300">
           Look up any VRF authority by its{" "}
           <code className="font-mono text-ink-100">(owner, label)</code> pair.
-          Confirm the operator&rsquo;s public key, suite, and lifecycle flags
-          before you trust their proofs.
+          Check its public key, suite, and status flags.
         </p>
       </section>
 
@@ -246,8 +245,8 @@ export function LookupPage() {
                 </span>{" "}
                 <span className="text-xs text-ink-500">
                   {result.frozen
-                    ? "(pk and suite are permanent — safe to trust)"
-                    : "(pk can still rotate — wait for freeze before trusting commits)"}
+                    ? "(pk and suite are now immutable)"
+                    : "(pk can still change; not yet frozen)"}
                 </span>
               </Field>
               <Field label="Revoked">
@@ -258,7 +257,7 @@ export function LookupPage() {
                 </span>{" "}
                 <span className="text-xs text-ink-500">
                   {result.revoked
-                    ? "(operator marked this authority retired — historical proofs still verify)"
+                    ? "(retired by operator; past proofs still verify)"
                     : "(active)"}
                 </span>
               </Field>
@@ -268,7 +267,7 @@ export function LookupPage() {
               <a href="#/verify" className="text-accent-300 hover:underline">
                 verifier page
               </a>{" "}
-              to confirm a specific roll was actually emitted by this authority.
+              to confirm a roll came from this authority.
             </div>
           </div>
         )}
@@ -276,11 +275,9 @@ export function LookupPage() {
 
       <section className="container-wide flex flex-col gap-3 text-sm text-ink-400">
         <p>
-          <strong className="text-ink-200">Why this matters:</strong> the
-          authority record is the trust anchor. Once it&rsquo;s frozen, the
-          operator can&rsquo;t silently rotate to a different secret key &mdash;
-          every subsequent proof must verify against the same{" "}
-          <code className="font-mono text-ink-200">pk</code> you see here.
+          Once an authority is frozen, the operator can&rsquo;t change its
+          secret key. All later proofs must verify against the{" "}
+          <code className="font-mono text-ink-200">pk</code> shown here.
         </p>
       </section>
     </main>

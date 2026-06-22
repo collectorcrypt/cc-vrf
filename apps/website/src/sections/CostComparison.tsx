@@ -7,9 +7,9 @@ export function CostComparison() {
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
           Cost comparison
         </span>
-        <h2 className="section-title">How does cc-vrf stack up?</h2>
+        <h2 className="section-title">Per-call cost vs other VRF providers.</h2>
         <p className="max-w-3xl text-ink-300">
-          Per-call USD cost for major on-chain VRF providers, gathered{" "}
+          Per-call USD cost for on-chain VRF providers, gathered{" "}
           <span className="font-mono text-ink-100">{PRICING_AS_OF}</span> at
           reference prices SOL ≈ ${REFERENCE_PRICES.sol}, ETH ≈ $
           {REFERENCE_PRICES.eth.toLocaleString()}, ETH gas ~1–2 gwei. cc-vrf

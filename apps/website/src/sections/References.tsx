@@ -7,11 +7,10 @@ export function References() {
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
           References
         </span>
-        <h2 className="section-title">Don&rsquo;t take our word for it.</h2>
+        <h2 className="section-title">Verify it yourself.</h2>
         <p className="max-w-3xl text-ink-300">
-          cc-vrf doesn&rsquo;t invent any crypto &mdash; it implements published
-          standards on top of audited libraries. Here&rsquo;s the primary
-          source material if you want to verify the math yourself.
+          cc-vrf implements published standards on top of audited libraries. The
+          primary sources are below.
         </p>
       </header>
 

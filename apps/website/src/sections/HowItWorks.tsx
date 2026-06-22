@@ -6,15 +6,15 @@ export function HowItWorks() {
           How it works
         </span>
         <h2 className="section-title">
-          Lock the public key. Commit the proof hash. Verify anywhere.
+          Lock the public key, commit the proof hash, verify off-chain.
         </h2>
         <p className="max-w-3xl text-ink-300">
           The on-chain program registers and freezes each operator&rsquo;s VRF
           public key, then records SHA-256 commitments for VRF calls. Registry
           modes enforce one commit per memo; event mode proves the frozen
-          authority and leaves duplicate-memo handling to the verifier. The
-          randomness itself is computed off-chain in pure JS &mdash; no ECVRF
-          verification runs on the program.
+          authority and leaves duplicate-memo handling to the verifier. ECVRF
+          runs entirely off-chain; the program verifies no randomness, only
+          commitments.
         </p>
       </header>
 
@@ -32,7 +32,7 @@ export function HowItWorks() {
         <Step
           n={3}
           title="commit_proof"
-          body="For each VRF call: hash the memo (request id, slot, whatever), run ECVRF off-chain, post sha256(proof) + sha256(alpha) + sha256(memo) on-chain. The commit's PDA address depends on memo_hash, so replay is impossible by construction."
+          body="For each VRF call: hash the memo (e.g. request id, slot), run ECVRF off-chain, post sha256(proof) + sha256(alpha) + sha256(memo) on-chain. The commit's PDA address depends on memo_hash, so the same memo can't be committed twice."
         />
         <Step
           n={4}
@@ -46,10 +46,10 @@ export function HowItWorks() {
           <div>
             <h3 className="subsection-title mb-2">Trust model</h3>
             <p className="text-sm text-ink-300">
-              Trust the operator who froze the pk to honestly produce VRF proofs
-              and not withhold results. The on-chain commitments make proof
-              substitution detectable; withholding remains a liveness failure
-              consumers can flag.
+              You trust the operator who froze the pk to produce honest VRF
+              proofs. The on-chain commitments make proof substitution
+              detectable; withholding is a liveness failure consumers can still
+              flag.
             </p>
           </div>
           <div>
@@ -74,8 +74,8 @@ export function HowItWorks() {
               </li>
             </ul>
             <p className="mt-2 text-xs text-ink-400">
-              Both are Light Protocol compressed PDAs &mdash; ~100x cheaper than
-              a normal Solana PDA.
+              Both are Light Protocol compressed PDAs, ~100x cheaper than a
+              normal Solana PDA.
             </p>
           </div>
         </div>

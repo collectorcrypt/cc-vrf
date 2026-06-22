@@ -53,20 +53,15 @@ export function EventsPage() {
             picks &ldquo;the latest event&rdquo; can be misled.
           </p>
           <p className="text-sm text-ink-400">
-            This isn&rsquo;t a fraud risk in any cryptographic sense &mdash; the
-            deterministic VRF proof is always recoverable from the event list.
-            It&rsquo;s an{" "}
-            <span className="text-ink-200">
-              &ldquo;inability to prove which event is canonical without doing
-              the math&rdquo;
-            </span>{" "}
-            risk. The math is in{" "}
+            The real VRF proof is always recoverable from the event list, so
+            there&rsquo;s no cryptographic fraud risk. The only exposure is a
+            verifier that picks an event without checking the math.{" "}
             <code className="font-mono text-ink-100">
               verifyAuthorityCommitEndToEnd
             </code>{" "}
             and{" "}
             <code className="font-mono text-ink-100">pickCanonicalCommit</code>{" "}
-            in the SDK.
+            in the SDK do that check for you.
           </p>
         </div>
       </section>
@@ -174,18 +169,17 @@ export function EventsPage() {
             </span>
             . An attacker who emits a junk event for memo{" "}
             <code className="font-mono">X</code> can&rsquo;t produce a second{" "}
-            <em>valid</em> proof for memo <code className="font-mono">X</code>{" "}
-            &mdash; the math forbids it. The real proof always exists somewhere
-            in the event list (or it was never emitted at all, in which case the
-            operator simply withheld the result &mdash; same liveness risk as
-            registry mode).
+            <em>valid</em> proof for memo <code className="font-mono">X</code>.
+            The real proof is somewhere in the event list &mdash; unless the
+            operator never emitted it, which is the same liveness risk as
+            registry mode.
           </p>
           <p className="mt-3 text-sm text-ink-300">
             <span className="text-ink-50 font-semibold">
-              Use <code className="font-mono">pickCanonicalCommit</code>
+              <code className="font-mono">pickCanonicalCommit</code>
             </span>{" "}
             from <code className="font-mono">@collectorcrypt/vrf-client</code>{" "}
-            and you&rsquo;re a careful verifier by default.
+            does this check for you.
           </p>
         </div>
       </section>
@@ -270,8 +264,8 @@ const result = verifyAuthorityCommitEndToEnd({
             <strong className="text-ink-50">
               Off-chain indexing is already part of your stack.
             </strong>{" "}
-            If you&rsquo;re already tailing Solana logs, event mode slots in
-            naturally.
+            If you already tail Solana logs, this mode needs no extra
+            infrastructure.
           </Bullet>
         </ul>
       </section>

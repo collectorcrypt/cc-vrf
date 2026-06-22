@@ -5,44 +5,41 @@ export function WhySecureEli5() {
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
           Plain English
         </span>
-        <h2 className="section-title">Why is this secure? ELI5.</h2>
+        <h2 className="section-title">Why is this secure?</h2>
         <p className="max-w-3xl text-ink-300">
-          Pick a card, any card. The operator holds a deck where every slot
-          already has a card in it &mdash; fixed by a secret only they know.
-          <em> You</em> pick which slot. They hand you the card that was always
-          there, plus the fanned-out proof anyone can check.
+          You name the input. The output for that input was already fixed by the
+          operator&rsquo;s secret key, so they can&rsquo;t pick a favorable
+          result. They return the value plus a proof anyone can check.
         </p>
       </header>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Step
           n={1}
-          title="You pick the card"
-          body="You (or your dApp) name the input — a request ID, a slot number, a bingo round. That's your pick. The operator never gets to choose, so they can't slide themselves a favorable card."
+          title="You choose the input"
+          body="You (or your dApp) name the input: a request ID, a slot number, a bingo round. The operator never chooses it, so they can't bias the result."
         />
         <Step
           n={2}
-          title="The deck is already set"
-          body="The operator's secret key fixes which card lives in every slot. They locked the deck's identity on-chain up front, so they can't quietly swap in a different deck once they see your pick."
+          title="The key is locked first"
+          body="The operator's VRF public key is committed on-chain in advance. They can't switch keys after seeing your input."
         />
         <Step
           n={3}
-          title="The fan is the proof"
-          body="When they hand you the card, they also show the proof — the math equivalent of fanning the deck out so you can see nothing was palmed, swapped, or invented after the fact."
+          title="The proof is checkable"
+          body="When they return the value, they also return a proof. Anyone can run it and confirm the value is the one valid output for that input."
         />
       </div>
 
       <div className="card">
         <h3 className="subsection-title mb-2">
-          Why this beats &ldquo;trust me, it&rsquo;s random&rdquo;
+          Why you don&rsquo;t have to trust the operator
         </h3>
         <p className="text-sm text-ink-300">
-          The operator can&rsquo;t choose your card, can&rsquo;t swap it after
-          you&rsquo;ve picked, and can&rsquo;t pretend the proof never existed
-          &mdash; it&rsquo;s committed on-chain the moment the card is drawn.
-          Anyone &mdash; not just you &mdash; can hold up the fan and confirm
-          the card you got was the only card that could ever have lived in that
-          slot.
+          They can&rsquo;t choose the input, can&rsquo;t change the output after
+          you&rsquo;ve committed it, and can&rsquo;t withhold the proof &mdash;
+          it&rsquo;s written on-chain when the value is generated. Anyone can
+          verify it, not just you.
         </p>
       </div>
     </section>

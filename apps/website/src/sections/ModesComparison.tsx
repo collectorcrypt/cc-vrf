@@ -5,11 +5,10 @@ export function ModesComparison() {
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
           Three commit modes
         </span>
-        <h2 className="section-title">Same proof, three ways to record it.</h2>
+        <h2 className="section-title">Three ways to commit the same proof.</h2>
         <p className="max-w-3xl text-ink-300">
           All three modes run the same RFC 9381 ECVRF math against the same
-          frozen authority. They differ in how the per-call commit lives on
-          chain.
+          frozen authority. They differ in how each commit is stored on chain.
         </p>
       </header>
 
