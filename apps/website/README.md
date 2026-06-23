@@ -13,7 +13,7 @@ pnpm --filter @collectorcrypt/vrf-client build
 
 # then
 cd apps/website
-cp .env.example .env.local   # fill in VITE_CC_VRF_RPC_URL
+cp .env.example .env.local   # fill in the mainnet/devnet RPC URLs
 pnpm dev
 ```
 
@@ -23,8 +23,10 @@ The site is a static SPA. Vercel auto-detects Vite from `vercel.json`.
 
 1. Push the repo to GitHub.
 2. Import the project in Vercel. Set the project root to `apps/website`.
-3. Set the env var: `VITE_CC_VRF_RPC_URL` → your Helius/Triton devnet RPC URL
-   (must serve Light Photon; the public `api.devnet.solana.com` does NOT).
+3. Set one env var per cluster, both Helius/Triton (must serve Light Photon;
+   the public Solana RPCs do NOT):
+   - `VITE_CC_VRF_MAINNET_RPC_URL` → your mainnet RPC URL
+   - `VITE_CC_VRF_DEVNET_RPC_URL` → your devnet RPC URL
 4. Build command and output are configured in `vercel.json` already.
 
 ## What's where

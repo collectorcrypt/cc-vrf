@@ -265,8 +265,8 @@ export function WalletDemo() {
           <strong>RPC notice.</strong> Your configured RPC{" "}
           <span className="font-mono">{VITE_RPC_URL}</span> may not serve Light
           Photon. The SDK&rsquo;s validity-proof endpoint will fail without it.
-          Set <code className="font-mono">VITE_CC_VRF_RPC_URL</code> to a
-          Helius/Triton devnet endpoint.
+          Set <code className="font-mono">VITE_CC_VRF_DEVNET_RPC_URL</code> to
+          a Helius/Triton devnet endpoint.
         </div>
       )}
 
