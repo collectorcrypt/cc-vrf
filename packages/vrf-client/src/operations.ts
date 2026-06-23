@@ -427,38 +427,93 @@ export interface ProofCommitEvent {
 }
 
 /**
- * Fetch all `VrfProofCommitted` events emitted for a given `(owner, label,
- * memo)` tuple, ordered oldest → newest. Returns an empty array if none
- * exist.
+ * Options for {@link findProofCommitEvents} and {@link fetchProofCommitEvents}.
+ */
+export interface ProofCommitEventQuery {
+  /**
+   * Look up exactly this transaction signature instead of scanning the owner's
+   * wallet history. This is the ROBUST path: a committer already knows the
+   * signature it submitted, so it sidesteps the history-scan failure mode
+   * entirely (see {@link ProofCommitEventResult.truncated}). When set, `limit`
+   * is ignored.
+   */
+  signature?: string;
+  /**
+   * Max number of recent signatures to scan when walking the owner's wallet
+   * history (default 1000). Only used when `signature` is not provided.
+   *
+   * NOTE: this counts ALL of the owner's transactions, not just VRF commits —
+   * on a busy mainnet wallet the target commit can fall outside the window, in
+   * which case the result is flagged `truncated` rather than silently returning
+   * an empty list.
+   */
+  limit?: number;
+}
+
+/**
+ * Result of {@link findProofCommitEvents}. Unlike a bare event array, this lets
+ * a caller distinguish "this memo was never committed" from "I could not
+ * confirm it within the scanned window / some transactions were unfetchable".
+ */
+export interface ProofCommitEventResult {
+  /** Matching events, ordered oldest → newest. */
+  events: ProofCommitEvent[];
+  /**
+   * True if the wallet-history scan hit `limit` before reaching the end of the
+   * owner's history. When true, an empty or short `events` list is NOT
+   * conclusive — the commit may simply be older than the scanned window.
+   * Re-query with a larger `limit`, or (preferably) pass the known `signature`.
+   * Always false when `signature` was provided.
+   */
+  truncated: boolean;
+  /**
+   * Signatures whose transaction could not be fetched (RPC retention gap or
+   * throttling — `getTransaction` returned null or threw). A genuine event may
+   * be hiding in one of these, so an empty `events` list is likewise
+   * inconclusive when this is non-empty.
+   */
+  unfetchedSignatures: string[];
+}
+
+/**
+ * Find `VrfProofCommitted` events for a `(owner, label, memo)` tuple, returning
+ * a structured result that surfaces scan completeness.
  *
- * IMPORTANT: this can return MORE than one row. The on-chain program does
- * not enforce uniqueness in event mode. A safe verifier:
+ * Two modes:
+ *   - Pass `query.signature` to fetch ONE known transaction directly. This is
+ *     the recommended path for any caller that submitted the commit (it already
+ *     has the signature) and is immune to the history-scan limit below.
+ *   - Otherwise the owner's wallet history is paginated (newest → oldest) up to
+ *     `query.limit` signatures (default 1000). Because this counts every
+ *     transaction the owner signed — not just VRF commits — a busy mainnet
+ *     wallet can push the target commit past the window; that case is reported
+ *     via `truncated: true` instead of an indistinguishable empty array.
+ *
+ * IMPORTANT: this can return MORE than one event. The on-chain program does not
+ * enforce uniqueness in event mode. A safe verifier:
  *
  *   1. Collects all matches for the requested memo.
  *   2. Runs `verifyAuthorityCommitEndToEnd` against each candidate proof.
  *   3. Accepts the unique row where the ECVRF math passes.
  *
- * Because ECVRF proofs are deterministic for a fixed (pk, alpha), at most
- * one of the candidates can have a valid `proof_hash`. The presence of extra
- * events is detectable noise, not a successful forgery — but a naive verifier
- * that picks "the latest event" without running ECVRF can be misled, which is
- * the only soundness gap relative to the PDA path.
+ * Because ECVRF proofs are deterministic for a fixed (pk, alpha), at most one
+ * candidate can have a valid `proof_hash`. The presence of extra events is
+ * detectable noise, not a successful forgery — but a naive verifier that picks
+ * "the latest event" without running ECVRF can be misled (see
+ * `pickCanonicalCommit`).
  *
  * `connection` and `programId` are passed in explicitly so log scanning works
- * against a plain Solana RPC. Fetching compressed authority state still needs
- * a Photon-capable RPC unless the verifier already has that state.
- *
- * `limit` caps how many recent signatures to scan (default 1000); pagination
- * happens automatically via `getSignaturesForAddress`'s `before` cursor.
+ * against a plain Solana RPC. Fetching compressed authority state still needs a
+ * Photon-capable RPC unless the verifier already has that state.
  */
-export async function fetchProofCommitEvents(
+export async function findProofCommitEvents(
   program: Program,
   connection: Connection,
   owner: PublicKey,
   label: string | Uint8Array,
   memo: string | Uint8Array,
-  options: { limit?: number } = {},
-): Promise<ProofCommitEvent[]> {
+  query: ProofCommitEventQuery = {},
+): Promise<ProofCommitEventResult> {
   const labelBytes = typeof label === "string" ? encodeLabel(label) : label;
   const targetMemoHash = memoHashFn(memo);
 
@@ -467,66 +522,132 @@ export async function fetchProofCommitEvents(
     new BorshCoder(program.idl),
   );
   const out: ProofCommitEvent[] = [];
+  const unfetchedSignatures: string[] = [];
 
-  const limit = options.limit ?? 1000;
+  // Fetch a single tx, treating RPC failure (retention gap / throttling returns
+  // null or throws) as a recoverable miss rather than crashing the scan.
+  const tryGetTx = async (signature: string) => {
+    try {
+      return await connection.getTransaction(signature, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  // Extract any matching VrfProofCommitted events from one fetched tx.
+  const collectFromTx = (
+    signature: string,
+    tx: Awaited<ReturnType<typeof tryGetTx>>,
+  ) => {
+    if (!tx?.meta?.logMessages) return;
+    for (const ev of parser.parseLogs(tx.meta.logMessages, false)) {
+      if (ev.name !== "VrfProofCommitted" && ev.name !== "vrfProofCommitted")
+        continue;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = ev.data as any;
+      const eventOwner: PublicKey = data.owner;
+      const eventLabel: Uint8Array = Uint8Array.from(data.label);
+      const eventMemoHash: Uint8Array = Uint8Array.from(data.memoHash);
+
+      if (!eventOwner.equals(owner)) continue;
+      if (!bytesEqual(eventLabel, labelBytes)) continue;
+      if (!bytesEqual(eventMemoHash, targetMemoHash)) continue;
+
+      const authority = deriveAuthorityAddress(
+        eventOwner,
+        eventLabel,
+        program.programId,
+      );
+      out.push({
+        owner: eventOwner,
+        label: eventLabel,
+        txSignature: signature,
+        slot: tx.slot,
+        onChainCommit: {
+          authority,
+          memoHash: eventMemoHash,
+          proofHash: Uint8Array.from(data.proofHash),
+          alphaHash: Uint8Array.from(data.alphaHash),
+          committedSlot: BigInt(data.committedSlot.toString()),
+        },
+      });
+    }
+  };
+
+  // Direct-by-signature mode: robust, no history scan, never truncated.
+  if (query.signature) {
+    const tx = await tryGetTx(query.signature);
+    if (!tx) unfetchedSignatures.push(query.signature);
+    else collectFromTx(query.signature, tx);
+    out.reverse();
+    return { events: out, truncated: false, unfetchedSignatures };
+  }
+
+  // History-scan mode.
+  const limit = query.limit ?? 1000;
   let before: string | undefined;
   let scanned = 0;
+  let reachedEnd = false;
   while (scanned < limit) {
     const pageLimit = Math.min(1000, limit - scanned);
     const sigInfos = await connection.getSignaturesForAddress(owner, {
       limit: pageLimit,
       before,
     });
-    if (sigInfos.length === 0) break;
+    if (sigInfos.length === 0) {
+      reachedEnd = true;
+      break;
+    }
     scanned += sigInfos.length;
     before = sigInfos[sigInfos.length - 1].signature;
 
     for (const sigInfo of sigInfos) {
       if (sigInfo.err) continue;
-      const tx = await connection.getTransaction(sigInfo.signature, {
-        commitment: "confirmed",
-        maxSupportedTransactionVersion: 0,
-      });
-      if (!tx?.meta?.logMessages) continue;
-
-      for (const ev of parser.parseLogs(tx.meta.logMessages, false)) {
-        if (ev.name !== "VrfProofCommitted" && ev.name !== "vrfProofCommitted")
-          continue;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data = ev.data as any;
-        const eventOwner: PublicKey = data.owner;
-        const eventLabel: Uint8Array = Uint8Array.from(data.label);
-        const eventMemoHash: Uint8Array = Uint8Array.from(data.memoHash);
-
-        if (!eventOwner.equals(owner)) continue;
-        if (!bytesEqual(eventLabel, labelBytes)) continue;
-        if (!bytesEqual(eventMemoHash, targetMemoHash)) continue;
-
-        const authority = deriveAuthorityAddress(
-          eventOwner,
-          eventLabel,
-          program.programId,
-        );
-        out.push({
-          owner: eventOwner,
-          label: eventLabel,
-          txSignature: sigInfo.signature,
-          slot: tx.slot,
-          onChainCommit: {
-            authority,
-            memoHash: eventMemoHash,
-            proofHash: Uint8Array.from(data.proofHash),
-            alphaHash: Uint8Array.from(data.alphaHash),
-            committedSlot: BigInt(data.committedSlot.toString()),
-          },
-        });
+      const tx = await tryGetTx(sigInfo.signature);
+      if (!tx) {
+        unfetchedSignatures.push(sigInfo.signature);
+        continue;
       }
+      collectFromTx(sigInfo.signature, tx);
     }
   }
 
   // RPC returns newest first — reverse so oldest comes first.
   out.reverse();
-  return out;
+  // If we exited because the cap was hit (not because history ran out), the
+  // result is incomplete: a missing event here is inconclusive, not "absent".
+  return { events: out, truncated: !reachedEnd, unfetchedSignatures };
+}
+
+/**
+ * Backward-compatible wrapper around {@link findProofCommitEvents} that returns
+ * just the events (oldest → newest).
+ *
+ * Prefer {@link findProofCommitEvents} when you need to tell "not committed"
+ * apart from "scan was truncated / some transactions were unfetchable" — on a
+ * busy mainnet wallet a bare empty array is ambiguous. Pass `options.signature`
+ * to look up a known commit directly and skip the history scan entirely.
+ */
+export async function fetchProofCommitEvents(
+  program: Program,
+  connection: Connection,
+  owner: PublicKey,
+  label: string | Uint8Array,
+  memo: string | Uint8Array,
+  options: ProofCommitEventQuery = {},
+): Promise<ProofCommitEvent[]> {
+  const { events } = await findProofCommitEvents(
+    program,
+    connection,
+    owner,
+    label,
+    memo,
+    options,
+  );
+  return events;
 }
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {

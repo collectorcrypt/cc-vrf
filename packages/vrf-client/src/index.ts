@@ -50,6 +50,7 @@ export {
   fetchProofCommit,
   fetchProofCommitWithBeta,
   fetchProofCommitEvents,
+  findProofCommitEvents,
   decodeAuthority,
   decodeProofCommit,
   decodeProofCommitWithBeta,
@@ -61,6 +62,8 @@ export type {
   FreezeAuthorityInput,
   CommitProofInput,
   ProofCommitEvent,
+  ProofCommitEventQuery,
+  ProofCommitEventResult,
 } from "./operations";
 
 export {
