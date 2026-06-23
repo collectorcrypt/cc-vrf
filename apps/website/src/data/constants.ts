@@ -80,28 +80,39 @@ export const REFERENCES: ReferenceGroup[] = [
 export type Cluster = "devnet" | "mainnet";
 
 /**
- * Per-cluster RPC overrides — one env var per cluster, named for the cluster
- * it serves so there's no ambiguity about which is which:
+ * Per-cluster RPC, one env var per cluster, required. Both must be
+ * Photon-capable (Helius/Triton) — the Lookup/Verify pages read compressed
+ * PDAs, which the public Solana RPCs do not serve.
  *
  *   VITE_CC_VRF_MAINNET_RPC_URL → used when cluster = mainnet
  *   VITE_CC_VRF_DEVNET_RPC_URL  → used when cluster = devnet (+ wallet demo)
  *
- * Both must be Photon-capable (Helius/Triton) — the Lookup/Verify pages read
- * compressed PDAs, and the public-RPC fallbacks below will NOT serve those
- * reads. When a cluster's var is unset, it falls back to its public default.
+ * No public-RPC fallback by design: a missing var must fail loudly here, not
+ * silently swap in a non-Photon endpoint that breaks compressed reads.
  */
-export const DEFAULT_DEVNET_RPC_URL =
-  "https://adjacent-ninette-fast-devnet.helius-rpc.com/";
+function requireRpc(cluster: Cluster, url: string | undefined): string {
+  if (!url) {
+    const varName =
+      cluster === "mainnet"
+        ? "VITE_CC_VRF_MAINNET_RPC_URL"
+        : "VITE_CC_VRF_DEVNET_RPC_URL";
+    throw new Error(
+      `${varName} is not set. Set it to a Photon-capable ${cluster} RPC ` +
+        `(Helius/Triton). There is no public-RPC fallback.`,
+    );
+  }
+  return url;
+}
 
-export const DEFAULT_MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com/";
+export const VITE_DEVNET_RPC_URL = requireRpc(
+  "devnet",
+  import.meta.env.VITE_CC_VRF_DEVNET_RPC_URL,
+);
 
-export const VITE_DEVNET_RPC_URL =
-  (import.meta.env.VITE_CC_VRF_DEVNET_RPC_URL as string | undefined) ||
-  DEFAULT_DEVNET_RPC_URL;
-
-export const VITE_MAINNET_RPC_URL =
-  (import.meta.env.VITE_CC_VRF_MAINNET_RPC_URL as string | undefined) ||
-  DEFAULT_MAINNET_RPC_URL;
+export const VITE_MAINNET_RPC_URL = requireRpc(
+  "mainnet",
+  import.meta.env.VITE_CC_VRF_MAINNET_RPC_URL,
+);
 
 /** Generic connection endpoint. The wallet demo runs on devnet. */
 export const VITE_RPC_URL = VITE_DEVNET_RPC_URL;
