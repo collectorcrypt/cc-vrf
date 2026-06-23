@@ -7,9 +7,9 @@ export function WhyWeMadeThis() {
         </span>
         <h2 className="section-title">
           We&rsquo;re <span className="text-accent-400">Collector Crypt</span>.
-          We&rsquo;ve processed over{" "}
+          We&rsquo;ve processed {" "}
           <span className="text-ink-50">
-            20 million VRF transactions on-chain
+            millions of VRF transactions on-chain
           </span>
           .
         </h2>
