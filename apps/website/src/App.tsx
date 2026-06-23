@@ -6,7 +6,6 @@ import { WhySecureEli5 } from "./sections/WhySecureEli5";
 import { ModesComparison } from "./sections/ModesComparison";
 import { ClientDemo } from "./sections/ClientDemo";
 import { WalletDemo } from "./sections/WalletDemo";
-import { CostComparison } from "./sections/CostComparison";
 import { ClaudeSkill } from "./sections/ClaudeSkill";
 import { GetStarted } from "./sections/GetStarted";
 import { Tools } from "./sections/Tools";
@@ -21,7 +20,7 @@ import { VerifyPage } from "./pages/VerifyPage";
 
 /**
  * Tiny hash-router: reads `window.location.hash` and re-renders on
- * `hashchange`. Anchors like `#cost` still work for in-page scroll —
+ * `hashchange`. Anchors like `#tools` still work for in-page scroll —
  * those start with `#<name>` (no slash). Page routes use `#/<name>`.
  */
 function useHashRoute(): string {
@@ -44,7 +43,6 @@ function Landing() {
       <WhySecureEli5 />
       <HowItWorks />
       <ModesComparison />
-      <CostComparison />
       <ClientDemo />
       <WalletDemo />
       <Tools />

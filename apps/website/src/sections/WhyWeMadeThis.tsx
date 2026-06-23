@@ -40,8 +40,9 @@ export function WhyWeMadeThis() {
             per-call cost to <span className="text-ink-100">~$0.0009</span> in
             event mode and <span className="text-ink-100">~$0.0027</span> in
             registry mode, using Light Protocol compressed PDAs and log-only
-            event commits. We open-sourced it so other Solana apps and games
-            don&rsquo;t have to pay for randomness.
+            event commits. That&rsquo;s about as cheap as verifiable on-chain
+            randomness gets, and we open-sourced it so other Solana apps and
+            games don&rsquo;t have to pay for it.
           </p>
         </div>
       </div>

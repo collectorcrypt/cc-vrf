@@ -35,9 +35,6 @@ export function Footer() {
           <a className="hover:text-ink-200" href="#client-demo">
             Demo
           </a>
-          <a className="hover:text-ink-200" href="#cost">
-            Cost chart
-          </a>
           <a className="hover:text-ink-200" href="#get-started">
             Get started
           </a>

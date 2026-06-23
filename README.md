@@ -172,16 +172,16 @@ The program does **not** custody keys, evaluate randomness, or run ECVRF verific
 
 **Trustless on-chain consumption is not in scope.** No Solana program can today verify an RFC 9381 ECVRF proof in a single tx — there's no Ed25519 ECVRF precompile and the curve math costs ~200k+ CU per verify in BPF. The `commit_proof_with_beta` variant lets other programs *read* the random value cheaply, but those programs still trust the operator (whose pk is frozen on chain). Auditors can detect mismatches after the fact by fetching the proof off-chain and re-running the math.
 
-## Cost comparison
+## Cost
 
-Measured against devnet on 2026-05-18, SOL ≈ $180. Run `pnpm cc-vrf-demo cost <N>` to reproduce against your own RPC and priority-fee setup.
+Measured against devnet on 2026-05-18, SOL ≈ $180. Run `pnpm cc-vrf-demo cost <N>` to reproduce against your own RPC and priority-fee setup. At a fraction of a cent per call, this is about as cheap as verifiable on-chain randomness gets.
 
-| Monthly VRF calls | Switchboard (~$0.45) | cc-vrf registry (~$0.0027) | cc-vrf event (~$0.0009) |
-|---|---:|---:|---:|
-| 10k | $4,500/mo | $27/mo | $9/mo |
-| 100k | $45,000/mo | $270/mo | $90/mo |
-| 1M | $450,000/mo | $2,700/mo | $900/mo |
-| 10M | $4.5M/mo | $27,000/mo | $9,000/mo |
+| Monthly VRF calls | cc-vrf registry (~$0.0027) | cc-vrf event (~$0.0009) |
+|---|---:|---:|
+| 10k | $27/mo | $9/mo |
+| 100k | $270/mo | $90/mo |
+| 1M | $2,700/mo | $900/mo |
+| 10M | $27,000/mo | $9,000/mo |
 
 The `commit_proof_with_beta` variant costs the same as plain registry mode in our benchmark — the extra 64 bytes per leaf is absorbed into the same Light Protocol slot. It uses the same address namespace as plain registry mode, so a single `(authority, memo)` can only choose one of the two registry shapes.
 

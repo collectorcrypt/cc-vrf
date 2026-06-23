@@ -223,9 +223,5 @@ export async function POST(req: Request) {
 - cc-vrf event mode: **~$0.0009**
 - cc-vrf registry mode: **~$0.0027**
 - cc-vrf registry + beta: ~$0.0027 (same cost as plain registry — 64 bytes is absorbed in the same slot)
-- ORAO VRF (Solana): ~$0.10
-- Switchboard On-Demand VRF (Solana): ~$0.19
-- Chainlink VRF v2.5 (Arbitrum): ~$0.15
-- Chainlink VRF v2.5 (Ethereum L1): ~$2.00
 
-Event mode is 3.00x cheaper than registry mode per call. Run `pnpm cc-vrf-demo cost <N>` to reproduce against your own RPC and priority-fee setup.
+A fraction of a cent per call — about as cheap as verifiable on-chain randomness gets. Event mode is 3.00x cheaper than registry mode per call. Run `pnpm cc-vrf-demo cost <N>` to reproduce against your own RPC and priority-fee setup.
