@@ -31,15 +31,10 @@ The site is a static SPA. Vercel auto-detects Vite from `vercel.json`.
 
 ## What's where
 
+- `src/components/TopNav.tsx` — sticky top nav
 - `src/sections/Hero.tsx` — landing
 - `src/sections/HowItWorks.tsx` — 4-step explanation
 - `src/sections/ClientDemo.tsx` — pure-client ECVRF demo
 - `src/sections/WalletDemo.tsx` — wallet-signed devnet demo
-- `src/sections/ServerSidePattern.tsx` — server-side operator pattern + drand callout
-- `src/sections/CostComparison.tsx` — interactive cost chart (Recharts)
 - `src/sections/GetStarted.tsx` — install + quickstart
-- `src/data/providers.ts` — VRF provider pricing data (edit here to update the chart)
-
-## Updating pricing
-
-Edit `src/data/providers.ts`. Keep `PRICING_AS_OF` accurate.
+- `src/pages/` — Lookup, Verify, Registry, and Events detail pages
