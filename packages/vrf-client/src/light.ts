@@ -130,7 +130,7 @@ export async function buildCommitProofContext(
   const authorityReadOnlyMeta = {
     treeInfo: {
       rootIndex: proofRes.rootIndices[0],
-      proveByIndex: true,
+      proveByIndex: proofRes.proveByIndices[0],
       merkleTreePubkeyIndex: authMerkleTreePubkeyIndex,
       queuePubkeyIndex: authQueuePubkeyIndex,
       leafIndex: authorityExisting.leafIndex,
@@ -187,7 +187,7 @@ export async function buildReadOnlyAuthorityContext(
   const authorityReadOnlyMeta = {
     treeInfo: {
       rootIndex: proofRes.rootIndices[0],
-      proveByIndex: true,
+      proveByIndex: proofRes.proveByIndices[0],
       merkleTreePubkeyIndex: authMerkleTreePubkeyIndex,
       queuePubkeyIndex: authQueuePubkeyIndex,
       leafIndex: authorityExisting.leafIndex,
@@ -242,7 +242,7 @@ export async function buildMutateContext(
   const accountMeta = {
     treeInfo: {
       rootIndex: proofRes.rootIndices[0],
-      proveByIndex: true,
+      proveByIndex: proofRes.proveByIndices[0],
       merkleTreePubkeyIndex,
       queuePubkeyIndex,
       leafIndex: existing.leafIndex,
