@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { BorshCoder, EventParser, Program } from "@coral-xyz/anchor";
+import { BorshCoder, Program } from "@coral-xyz/anchor";
 import {
   Connection,
   PublicKey,
@@ -517,10 +517,24 @@ export async function findProofCommitEvents(
   const labelBytes = typeof label === "string" ? encodeLabel(label) : label;
   const targetMemoHash = memoHashFn(memo);
 
-  const parser = new EventParser(
-    program.programId,
-    new BorshCoder(program.idl),
-  );
+  // Decode `Program data:` lines directly instead of via EventParser: Anchor's
+  // parser also tries to decode `Program log: Instruction: <name>`, and that
+  // failure aborts the whole scan before it reaches the real event line.
+  const coder = new BorshCoder(program.idl);
+  const decodeEvents = (logMessages: string[]) => {
+    const decoded: { name: string; data: unknown }[] = [];
+    for (const line of logMessages) {
+      const m = /^\s*Program data:\s*(\S+)\s*$/.exec(line);
+      if (!m) continue;
+      try {
+        const ev = coder.events.decode(m[1]);
+        if (ev) decoded.push(ev);
+      } catch {
+        /* not one of our events */
+      }
+    }
+    return decoded;
+  };
   const out: ProofCommitEvent[] = [];
   const unfetchedSignatures: string[] = [];
 
@@ -543,7 +557,7 @@ export async function findProofCommitEvents(
     tx: Awaited<ReturnType<typeof tryGetTx>>,
   ) => {
     if (!tx?.meta?.logMessages) return;
-    for (const ev of parser.parseLogs(tx.meta.logMessages, false)) {
+    for (const ev of decodeEvents(tx.meta.logMessages)) {
       if (ev.name !== "VrfProofCommitted" && ev.name !== "vrfProofCommitted")
         continue;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

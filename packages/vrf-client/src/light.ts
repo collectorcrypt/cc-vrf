@@ -138,6 +138,7 @@ export async function buildCommitProofContext(
     address: authorityExisting.address,
   };
 
+  // Addresses are appended after accounts in every array, so the address entry is last.
   const packedAddressTreeInfo = {
     rootIndex: proofRes.rootIndices[proofRes.rootIndices.length - 1],
     addressMerkleTreePubkeyIndex: addressMtIdx,
