@@ -38,12 +38,12 @@
     "@collectorcrypt/ecvrf": "workspace:*",
     "@coral-xyz/anchor": "^0.32.1",
     "@lightprotocol/stateless.js": "^0.23.3",
-    "@noble/hashes": "^2.2.0",
-    "@solana/web3.js": "^1.98.4"
+    "@noble/hashes": "^2.4.0",
+    "@solana/web3.js": "^1.99.0"
   },
   "devDependencies": {
-    "@types/node": "^25.7.0",
+    "@types/node": "^25.9.9",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.12"
   }
 }

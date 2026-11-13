@@ -14,10 +14,10 @@
     "lint:fix": "prettier \"packages/**/*.{ts,tsx}\" \"apps/**/*.{ts,tsx}\" -w"
   },
   "devDependencies": {
-    "@types/node": "^25.7.0",
-    "prettier": "^3.8.3",
-    "tsx": "^4.21.0",
+    "@types/node": "^25.9.9",
+    "prettier": "^3.10.1",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.12"
   }
 }
