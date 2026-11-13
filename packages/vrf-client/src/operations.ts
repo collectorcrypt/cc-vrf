@@ -520,14 +520,14 @@ export async function findProofCommitEvents(
   // Decode `Program data:` lines directly instead of via EventParser: Anchor's
   // parser also tries to decode `Program log: Instruction: <name>`, and that
   // failure aborts the whole scan before it reaches the real event line.
+  // Only lines our program wrote count: any program can print the same bytes.
   const coder = new BorshCoder(program.idl);
+  const programIdBase58 = program.programId.toBase58();
   const decodeEvents = (logMessages: string[]) => {
     const decoded: { name: string; data: unknown }[] = [];
-    for (const line of logMessages) {
-      const m = /^\s*Program data:\s*(\S+)\s*$/.exec(line);
-      if (!m) continue;
+    for (const b64 of ownProgramDataLines(logMessages, programIdBase58)) {
       try {
-        const ev = coder.events.decode(m[1]);
+        const ev = coder.events.decode(b64);
         if (ev) decoded.push(ev);
       } catch {
         /* not one of our events */
@@ -537,6 +537,40 @@ export async function findProofCommitEvents(
   };
   const out: ProofCommitEvent[] = [];
   const unfetchedSignatures: string[] = [];
+
+  // Record one commit if it is this owner's, under this label, for this memo.
+  const accept = (
+    signature: string,
+    slot: number,
+    commitOwner: PublicKey,
+    commitLabel: Uint8Array,
+    commitMemoHash: Uint8Array,
+    proofHash: Uint8Array,
+    alphaHash: Uint8Array,
+    committedSlot: bigint,
+  ): boolean => {
+    if (!commitOwner.equals(owner)) return false;
+    if (!bytesEqual(commitLabel, labelBytes)) return false;
+    if (!bytesEqual(commitMemoHash, targetMemoHash)) return false;
+    out.push({
+      owner: commitOwner,
+      label: commitLabel,
+      txSignature: signature,
+      slot,
+      onChainCommit: {
+        authority: deriveAuthorityAddress(
+          commitOwner,
+          commitLabel,
+          program.programId,
+        ),
+        memoHash: commitMemoHash,
+        proofHash,
+        alphaHash,
+        committedSlot,
+      },
+    });
+    return true;
+  };
 
   // Fetch a single tx, treating RPC failure (retention gap / throttling returns
   // null or throws) as a recoverable miss rather than crashing the scan.
@@ -551,44 +585,78 @@ export async function findProofCommitEvents(
     }
   };
 
-  // Extract any matching VrfProofCommitted events from one fetched tx.
+  type FetchedTx = NonNullable<Awaited<ReturnType<typeof tryGetTx>>>;
+
+  // The signed commit_proof_event instruction carries the same commitment as
+  // the log event; read it when the RPC returned no usable log.
+  const collectFromInstructions = (signature: string, tx: FetchedTx) => {
+    const msg = tx.transaction.message;
+    let keys;
+    try {
+      keys = msg.getAccountKeys({
+        accountKeysFromLookups: tx.meta?.loadedAddresses,
+      });
+    } catch {
+      return;
+    }
+    for (const ix of msg.compiledInstructions) {
+      if (!keys.get(ix.programIdIndex)?.equals(program.programId)) continue;
+      let decoded;
+      try {
+        decoded = coder.instruction.decode(Buffer.from(ix.data));
+      } catch {
+        continue;
+      }
+      if (
+        !decoded ||
+        (decoded.name !== "commitProofEvent" &&
+          decoded.name !== "commit_proof_event")
+      )
+        continue;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const d = decoded.data as any;
+      // Account 0 is the owner Signer; the tx succeeded, so the program checked it.
+      const ixOwner = keys.get(ix.accountKeyIndexes[0]);
+      if (!ixOwner) continue;
+      accept(
+        signature,
+        tx.slot,
+        ixOwner,
+        Uint8Array.from(d.label),
+        Uint8Array.from(d.memoHash ?? d.memo_hash),
+        Uint8Array.from(d.proofHash ?? d.proof_hash),
+        Uint8Array.from(d.alphaHash ?? d.alpha_hash),
+        BigInt(tx.slot),
+      );
+    }
+  };
+
+  // Extract any matching commit from one fetched tx.
   const collectFromTx = (
     signature: string,
     tx: Awaited<ReturnType<typeof tryGetTx>>,
   ) => {
-    if (!tx?.meta?.logMessages) return;
-    for (const ev of decodeEvents(tx.meta.logMessages)) {
+    // A failed tx committed nothing, even when its logs show the event.
+    if (!tx?.meta || tx.meta.err) return;
+    let found = false;
+    for (const ev of decodeEvents(tx.meta.logMessages ?? [])) {
       if (ev.name !== "VrfProofCommitted" && ev.name !== "vrfProofCommitted")
         continue;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = ev.data as any;
-      const eventOwner: PublicKey = data.owner;
-      const eventLabel: Uint8Array = Uint8Array.from(data.label);
-      const eventMemoHash: Uint8Array = Uint8Array.from(data.memoHash);
-
-      if (!eventOwner.equals(owner)) continue;
-      if (!bytesEqual(eventLabel, labelBytes)) continue;
-      if (!bytesEqual(eventMemoHash, targetMemoHash)) continue;
-
-      const authority = deriveAuthorityAddress(
-        eventOwner,
-        eventLabel,
-        program.programId,
-      );
-      out.push({
-        owner: eventOwner,
-        label: eventLabel,
-        txSignature: signature,
-        slot: tx.slot,
-        onChainCommit: {
-          authority,
-          memoHash: eventMemoHash,
-          proofHash: Uint8Array.from(data.proofHash),
-          alphaHash: Uint8Array.from(data.alphaHash),
-          committedSlot: BigInt(data.committedSlot.toString()),
-        },
-      });
+      found =
+        accept(
+          signature,
+          tx.slot,
+          data.owner,
+          Uint8Array.from(data.label),
+          Uint8Array.from(data.memoHash),
+          Uint8Array.from(data.proofHash),
+          Uint8Array.from(data.alphaHash),
+          BigInt(data.committedSlot.toString()),
+        ) || found;
     }
+    if (!found) collectFromInstructions(signature, tx);
   };
 
   // Direct-by-signature mode: robust, no history scan, never truncated.
@@ -662,6 +730,40 @@ export async function fetchProofCommitEvents(
     options,
   );
   return events;
+}
+
+const BASE58_ID = "[1-9A-HJ-NP-Za-km-z]{32,44}";
+const INVOKE_RE = new RegExp(`^Program (${BASE58_ID}) invoke \\[\\d+\\]$`);
+const EXIT_RE = new RegExp(`^Program (${BASE58_ID}) (success|failed)`);
+const DATA_RE = /^Program data: (\S+)$/;
+
+/**
+ * The `Program data:` payloads written while `programId` was the executing
+ * program, attributed by the runtime's invoke / success / failed lines. A
+ * program's own output is prefixed `Program log:` or `Program data:`, so it
+ * cannot fake those lines; any program can print event bytes, though, so a
+ * verifier must ignore data lines written under another program.
+ */
+export function ownProgramDataLines(
+  logMessages: string[],
+  programId: string,
+): string[] {
+  const stack: string[] = [];
+  const out: string[] = [];
+  for (const line of logMessages) {
+    const invoke = INVOKE_RE.exec(line);
+    if (invoke) {
+      stack.push(invoke[1]);
+      continue;
+    }
+    if (EXIT_RE.test(line)) {
+      stack.pop();
+      continue;
+    }
+    const data = DATA_RE.exec(line);
+    if (data && stack[stack.length - 1] === programId) out.push(data[1]);
+  }
+  return out;
 }
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {

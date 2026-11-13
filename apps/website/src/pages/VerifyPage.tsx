@@ -3,7 +3,7 @@ import { PublicKey } from "@solana/web3.js";
 import {
   fetchAuthority,
   fetchProofCommit,
-  fetchProofCommitEvents,
+  findProofCommitEvents,
   fetchProofCommitWithBeta,
   hexToBytes,
   bytesToHex,
@@ -47,6 +47,7 @@ export function VerifyPage() {
   const [memo, setMemo] = useState(p.get("memo") || "");
   const [proofHex, setProofHex] = useState(p.get("proof") || "");
   const [alphaHex, setAlphaHex] = useState(p.get("alpha") || "");
+  const [sig, setSig] = useState(p.get("sig") || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<VerifyOutcome | null>(null);
@@ -121,16 +122,28 @@ export function VerifyPage() {
         onChainCommit = c.onChainCommit;
         onChainBeta = c.beta;
       } else {
-        const events = await fetchProofCommitEvents(
+        // With the commit's signature, read that one tx; without it, scan the owner's recent history.
+        const signature = sig.trim();
+        const { events, truncated } = await findProofCommitEvents(
           program,
           connection,
           ownerPk,
           label,
           memo,
+          signature ? { signature } : {},
         );
         candidateCount = events.length;
-        if (events.length === 0)
-          throw new Error("no commit_proof_event logs found for this memo");
+        if (events.length === 0) {
+          if (signature)
+            throw new Error(
+              `transaction ${signature} holds no successful commit for this memo under this owner and label`,
+            );
+          throw new Error(
+            truncated
+              ? "no commit in the owner's last 1,000 transactions; paste the commit transaction signature"
+              : "no commit_proof_event found for this memo",
+          );
+        }
         const picked = pickCanonicalCommit(
           events.map((e) => e.onChainCommit),
           proof,
@@ -317,6 +330,21 @@ export function VerifyPage() {
               required
             />
           </label>
+
+          {mode === "event" && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+                Commit transaction signature (optional)
+              </span>
+              <input
+                type="text"
+                value={sig}
+                onChange={(e) => setSig(e.target.value)}
+                className="rounded-md border border-ink-800 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-100 focus:border-accent-500 focus:outline-none"
+                placeholder="reads that transaction directly; without it, the owner's last 1,000 transactions are scanned"
+              />
+            </label>
+          )}
 
           <button
             type="submit"

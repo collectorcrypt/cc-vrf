@@ -51,6 +51,7 @@ export {
   fetchProofCommitWithBeta,
   fetchProofCommitEvents,
   findProofCommitEvents,
+  ownProgramDataLines,
   decodeAuthority,
   decodeProofCommit,
   decodeProofCommitWithBeta,
