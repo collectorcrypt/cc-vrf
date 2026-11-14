@@ -133,20 +133,25 @@ export function VerifyPage() {
         const { commits, unfetched } = await findBatchCommits(program, connection, signature);
         if (unfetched) throw new Error(`transaction ${signature} not found on ${cluster} (this RPC may not keep that slot)`);
         const labelBytes = encodeLabel(label);
-        const batch = commits.find(
+        const matching = commits.filter(
           (c) => c.owner.equals(ownerPk) && c.label.every((b, k) => b === labelBytes[k]),
         );
-        if (!batch) throw new Error(`transaction ${signature} holds no successful batch commit by this owner and label`);
-        const result = verifyBatchCommitEndToEnd({
-          authority: auth.onChainAuthority,
+        if (matching.length === 0) throw new Error(`transaction ${signature} holds no successful batch commit by this owner and label`);
+        // One transaction may carry several roots by this authority: report the one this leaf and path prove into.
+        const tried = matching.map((batch) => ({
           batch,
-          memo,
-          alpha,
-          proof,
-          index: i,
-          path,
-          expectedOwner: ownerPk,
-        });
+          result: verifyBatchCommitEndToEnd({
+            authority: auth.onChainAuthority,
+            batch,
+            memo,
+            alpha,
+            proof,
+            index: i,
+            path,
+            expectedOwner: ownerPk,
+          }),
+        }));
+        const { batch, result } = tried.find((x) => x.result.leafInBatch) ?? tried[0];
         setOutcome({
           kind: "batch",
           result,
