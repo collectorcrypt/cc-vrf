@@ -80,13 +80,11 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
  */
 /**
  * Result of picking the canonical commit from a list of events for the same
- * `(authority, memo)`. The "canonical" commit is the unique event whose
- * `proof_hash` matches the SHA-256 of a proof that verifies under ECVRF.
+ * `(authority, memo)`: the event whose `proof_hash` is the SHA-256 of the
+ * proof you hold (verify that proof under ECVRF separately).
  *
- * Because ECVRF proofs are deterministic for a given (pk, alpha), at most one
- * candidate can have a valid `proof_hash`. Extra events (which the chain
- * allows in event-mode) are simply garbage payloads — detectable, not a
- * successful forgery.
+ * ECVRF output is unique per (pk, alpha): every proof that verifies yields the
+ * same beta, so extra events (event mode allows them) cannot change the result.
  */
 export interface PickCanonicalResult {
   /** The single event whose committed hash matches the verifying proof, or null if none verify. */
@@ -95,7 +93,7 @@ export interface PickCanonicalResult {
   candidates: OnChainCommit[];
   /** Whether more than one event was found for the same memo. Informational. */
   duplicateMemoEvents: boolean;
-  /** Whether more than one candidate's `proof_hash` matched a verifying proof (should be impossible if ECVRF is sound). */
+  /** Whether more than one candidate committed the same proof hash (a re-sent commit; informational). */
   multipleVerifying: boolean;
 }
 
@@ -126,7 +124,13 @@ export interface VerifyAuthorityCommitEndToEndInput extends Omit<
 
 export interface VerifyAuthorityCommitEndToEndResult extends VerifyEndToEndResult {
   authorityFrozen: boolean;
+  /**
+   * Informational only: a revoked flag never invalidates a commit (the frozen pk still proves it). v2 removed
+   * `revoke_authority`; only authorities revoked under RC1 can carry it.
+   */
   authorityNotRevoked: boolean;
+  /** Facts that do not affect `valid` (e.g. "authority-revoked"). */
+  notes: string[];
   authorityOwnerMatches: boolean;
   authorityLabelMatches: boolean;
   commitAuthorityMatches: boolean;
@@ -232,8 +236,9 @@ export function verifyAuthorityCommitEndToEnd(
   const authorityFrozen = input.authority.frozen;
   if (!authorityFrozen) reasons.push("authority-not-frozen");
 
+  const notes: string[] = [];
   const authorityNotRevoked = !input.authority.revoked;
-  if (!authorityNotRevoked) reasons.push("authority-revoked");
+  if (!authorityNotRevoked) notes.push("authority-revoked");
 
   const authorityOwnerMatches = input.expectedOwner
     ? input.authority.owner.equals(input.expectedOwner)
@@ -284,7 +289,6 @@ export function verifyAuthorityCommitEndToEnd(
   const valid =
     base.valid &&
     authorityFrozen &&
-    authorityNotRevoked &&
     authorityOwnerMatches &&
     authorityLabelMatches &&
     commitAuthorityMatches &&
@@ -297,6 +301,7 @@ export function verifyAuthorityCommitEndToEnd(
     reasons,
     authorityFrozen,
     authorityNotRevoked,
+    notes,
     authorityOwnerMatches,
     authorityLabelMatches,
     commitAuthorityMatches,

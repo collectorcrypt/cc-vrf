@@ -1,0 +1,20 @@
+[package]
+name = "cc-vrf-verify"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "No-CPI helpers for programs that settle on cc-vrf batch roots: batch spec v1 leaves, RFC 9162 inclusion proofs, root-ring reads, vrfStream blocks."
+
+# Its own workspace: consumers pin no Solana or Anchor version through this crate.
+[workspace]
+
+[features]
+default = ["sha2"]
+# Software SHA-256/SHA-512. On-chain consumers implement the hasher traits with their own syscalls instead.
+sha2 = ["dep:sha2"]
+
+[dependencies]
+sha2 = { version = "0.10.9", default-features = false, optional = true }
+
+[dev-dependencies]
+serde_json = "1"

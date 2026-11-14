@@ -1,13 +1,19 @@
+pub mod attest_possession;
+pub mod commit_batch_event;
 pub mod commit_proof;
 pub mod commit_proof_event;
 pub mod commit_proof_with_beta;
 pub mod freeze_authority;
 pub mod init_authority;
-pub mod revoke_authority;
+pub mod prove_authority;
+pub mod root_ring;
 
+pub use attest_possession::*;
+pub use commit_batch_event::*;
 pub use commit_proof::*;
 pub use commit_proof_event::*;
 pub use commit_proof_with_beta::*;
 pub use freeze_authority::*;
 pub use init_authority::*;
-pub use revoke_authority::*;
+pub use prove_authority::*;
+pub use root_ring::*;

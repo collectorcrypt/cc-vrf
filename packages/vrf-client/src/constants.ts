@@ -1,8 +1,8 @@
 import { PublicKey } from "@solana/web3.js";
 
 /**
- * Default mainnet program ID (renounced upgrade authority post-deploy).
- * Override via `new VrfClient({ programId })` for devnet/local testing.
+ * cc-vrf program ID on mainnet and devnet. Upgrades: Squads vault 2Ef85QR7xrGJPdSvFcDz6X9ctqUoSptpi4vsnejpPAZQ (mainnet).
+ * Forks pass their own programId to getProgram / the derive helpers.
  */
 export const CC_VRF_PROGRAM_ID = new PublicKey(
   "ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ",

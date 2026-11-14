@@ -7,9 +7,8 @@ pub const SUITE_EDWARDS25519_SHA512_TAI: u8 = 0x03;
 /// Per-operator authority. Locks a published VRF public key on-chain so the
 /// operator cannot silently rotate to a different secret key. The
 /// `frozen` flag is one-way: once set, the pk and suite are permanent.
-/// `revoked` is informational — a soft-deprecation flag for graceful key
-/// rotation (the operator creates a new authority and marks the old one
-/// revoked; historical proofs remain verifiable against the old pk).
+/// `revoked` stays in the layout but nothing can set it: v2 removed
+/// `revoke_authority`. Commits still refuse an authority marked revoked.
 ///
 /// Stored as a Light compressed PDA. Seeds:
 ///   ["vrf_authority", owner_pubkey, label_bytes]
@@ -83,8 +82,8 @@ pub struct VrfProofCommitWithBeta {
     pub proof_hash: [u8; 32],
     #[hash]
     pub alpha_hash: [u8; 32],
-    /// First 32 bytes of the 64-byte beta. Split because LightHasher caps
-    /// each field at 32 bytes.
+    /// First 32 bytes of the 64-byte beta. The split is the RC1 layout; the
+    /// account is hashed flat (sha256 of its borsh bytes), not per field.
     #[hash]
     pub beta_lo: [u8; 32],
     /// Second 32 bytes of the 64-byte beta.
@@ -95,4 +94,52 @@ pub struct VrfProofCommitWithBeta {
 
 impl VrfProofCommitWithBeta {
     pub const SEED_PREFIX: &'static [u8] = VrfProofCommit::SEED_PREFIX;
+}
+
+/// Batch spec v1 (see crates/cc-vrf-verify): the only leaf format commits accept.
+pub const BATCH_LEAF_VERSION: u8 = 1;
+pub const MAX_BATCH_COUNT: u32 = 1 << 20;
+
+pub const RING_SEED: &[u8] = b"root_ring";
+pub const RING_VERSION: u8 = 1;
+pub const RING_CAPACITY: usize = 128;
+
+/// The last 128 batch roots of one authority, readable by other programs without CPI.
+/// Entry `seq` lives at `entries[seq % 128]` and is live iff `seq != 0 && entries[seq % 128].seq == seq`.
+/// Seeds: ["root_ring", authority_address]. 7,352 bytes with the discriminator.
+#[account(zero_copy)]
+pub struct VrfRootRing {
+    pub version: u8,
+    pub bump: u8,
+    pub capacity: u16,
+    pub _pad: [u8; 4],
+    /// Sequence the next commit must claim; starts at 1.
+    pub next_seq: u64,
+    /// The authority's compressed-account address.
+    pub authority: [u8; 32],
+    pub owner: Pubkey,
+    pub label: [u8; 32],
+    pub reserved: [u8; 64],
+    pub entries: [RingEntry; RING_CAPACITY],
+}
+
+#[zero_copy]
+pub struct RingEntry {
+    pub seq: u64,
+    pub slot: u64,
+    pub root: [u8; 32],
+    pub count: u32,
+    pub leaf_version: u8,
+    pub _pad: [u8; 3],
+}
+
+pub const POSSESSION_SEED: &[u8] = b"vrf_pop";
+
+/// Exists iff the VRF key signed the possession message for this authority. Seeds: ["vrf_pop", authority_address].
+#[account]
+#[derive(InitSpace)]
+pub struct VrfPossession {
+    pub authority: [u8; 32],
+    pub pk: [u8; 32],
+    pub slot: u64,
 }

@@ -1,34 +1,53 @@
 import { useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import {
+  encodeLabel,
   fetchAuthority,
   fetchProofCommit,
+  findBatchCommits,
   findProofCommitEvents,
   fetchProofCommitWithBeta,
   hexToBytes,
   bytesToHex,
   pickCanonicalCommit,
   verifyAuthorityCommitEndToEnd,
+  verifyBatchCommitEndToEnd,
+  type BatchCommit,
   type VerifyAuthorityCommitEndToEndResult,
+  type VerifyBatchCommitResult,
 } from "@collectorcrypt/vrf-client";
 import {
   defaultRpcForCluster,
   explorerAddressUrlFor,
+  explorerTxUrlFor,
   type Cluster,
 } from "../data/constants";
 import { buildReadOnlyProgram } from "../wallet/ReadonlyProgram";
 
-type Mode = "registry" | "registry-beta" | "event";
+type Mode = "registry" | "registry-beta" | "event" | "batch";
+const MODES: Mode[] = ["registry", "registry-beta", "event", "batch"];
 
 type VerifyOutcome = {
-  result: VerifyAuthorityCommitEndToEndResult;
   authorityAddress: string;
   pkHex: string;
   betaHex: string | null;
   mode: Mode;
   duplicateMemoEvents?: boolean;
   candidateCount?: number;
-};
+} & (
+  | { kind: "single"; result: VerifyAuthorityCommitEndToEndResult }
+  | { kind: "batch"; result: VerifyBatchCommitResult; batch: BatchCommit; index: number }
+);
+
+/** Batch paths arrive as comma-separated hex nodes (leaf level first). */
+function parsePath(s: string): Uint8Array[] {
+  const parts = s.split(/[\s,]+/).filter(Boolean);
+  return parts.map((h, i) => {
+    const b = hexToBytes(h.replace(/^0x/, ""));
+    if (b.length !== 32) throw new Error(`path node ${i} must be 32 bytes`);
+    return b;
+  });
+}
 
 // Deep-link prefill: read params from the hash query string (e.g. #/verify?memo=...&proof=...).
 function hashParams(): URLSearchParams {
@@ -41,7 +60,10 @@ export function VerifyPage() {
   const initCluster = (p.get("cluster") as Cluster) || "mainnet";
   const [cluster, setCluster] = useState<Cluster>(initCluster);
   const [rpcUrl, setRpcUrl] = useState<string>(p.get("rpc") || defaultRpcForCluster(initCluster));
-  const [mode, setMode] = useState<Mode>((p.get("mode") as Mode) || "registry");
+  const initMode = MODES.find((m) => m === p.get("mode")) ?? "registry";
+  const [mode, setMode] = useState<Mode>(initMode);
+  const [index, setIndex] = useState(p.get("index") || "");
+  const [pathText, setPathText] = useState(p.get("path") || "");
   const [owner, setOwner] = useState(p.get("owner") || "");
   const [label, setLabel] = useState(p.get("label") || "");
   const [memo, setMemo] = useState(p.get("memo") || "");
@@ -101,6 +123,42 @@ export function VerifyPage() {
       let onChainBeta: Uint8Array | undefined;
       let duplicateMemoEvents: boolean | undefined;
       let candidateCount: number | undefined;
+
+      if (mode === "batch") {
+        const signature = sig.trim();
+        if (!signature) throw new Error("batch mode needs the batch commit transaction signature");
+        const i = Number(index);
+        if (!Number.isInteger(i) || i < 0) throw new Error("index must be a non-negative integer");
+        const path = parsePath(pathText);
+        const { commits, unfetched } = await findBatchCommits(program, connection, signature);
+        if (unfetched) throw new Error(`transaction ${signature} not found on ${cluster} (this RPC may not keep that slot)`);
+        const labelBytes = encodeLabel(label);
+        const batch = commits.find(
+          (c) => c.owner.equals(ownerPk) && c.label.every((b, k) => b === labelBytes[k]),
+        );
+        if (!batch) throw new Error(`transaction ${signature} holds no successful batch commit by this owner and label`);
+        const result = verifyBatchCommitEndToEnd({
+          authority: auth.onChainAuthority,
+          batch,
+          memo,
+          alpha,
+          proof,
+          index: i,
+          path,
+          expectedOwner: ownerPk,
+        });
+        setOutcome({
+          kind: "batch",
+          result,
+          batch,
+          index: i,
+          authorityAddress: auth.authorityAddress.toBase58(),
+          pkHex: bytesToHex(Uint8Array.from(auth.decoded.pk)),
+          betaHex: result.beta ? bytesToHex(result.beta) : null,
+          mode,
+        });
+        return;
+      }
 
       if (mode === "registry") {
         const c = await fetchProofCommit(
@@ -168,6 +226,7 @@ export function VerifyPage() {
       });
 
       setOutcome({
+        kind: "single",
         result,
         authorityAddress: auth.authorityAddress.toBase58(),
         pkHex: bytesToHex(Uint8Array.from(auth.decoded.pk)),
@@ -244,6 +303,7 @@ export function VerifyPage() {
                   ["registry", "registry"],
                   ["registry-beta", "registry+beta"],
                   ["event", "event"],
+                  ["batch", "batch"],
                 ] as [Mode, string][]
               ).map(([m, lbl]) => (
                 <button
@@ -331,19 +391,54 @@ export function VerifyPage() {
             />
           </label>
 
-          {mode === "event" && (
+          {(mode === "event" || mode === "batch") && (
             <label className="flex flex-col gap-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
-                Commit transaction signature (optional)
+                {mode === "batch" ? "Batch commit transaction signature" : "Commit transaction signature (optional)"}
               </span>
               <input
                 type="text"
                 value={sig}
                 onChange={(e) => setSig(e.target.value)}
                 className="rounded-md border border-ink-800 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-100 focus:border-accent-500 focus:outline-none"
-                placeholder="reads that transaction directly; without it, the owner's last 1,000 transactions are scanned"
+                placeholder={
+                  mode === "batch"
+                    ? "the transaction that committed the batch root"
+                    : "reads that transaction directly; without it, the owner's last 1,000 transactions are scanned"
+                }
+                required={mode === "batch"}
               />
             </label>
+          )}
+
+          {mode === "batch" && (
+            <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+                  Leaf index
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={index}
+                  onChange={(e) => setIndex(e.target.value)}
+                  className="rounded-md border border-ink-800 bg-ink-950 px-3 py-2 font-mono text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
+                  required
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">
+                  Inclusion path (hex nodes, leaf level first)
+                </span>
+                <textarea
+                  value={pathText}
+                  onChange={(e) => setPathText(e.target.value)}
+                  rows={3}
+                  className="rounded-md border border-ink-800 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-100 focus:border-accent-500 focus:outline-none"
+                  placeholder="comma-separated 32-byte hex nodes; empty for a one-leaf batch"
+                />
+              </label>
+            </div>
           )}
 
           <button
@@ -375,25 +470,32 @@ function Outcome({
   cluster: Cluster;
 }) {
   const r = outcome.result;
-  const checks: { label: string; ok: boolean | null; note?: string }[] = [
-    { label: "Suite supported (0x03 TAI)", ok: r.suiteSupported },
-    { label: "ECVRF math valid", ok: r.ecvrfValid },
-    { label: "sha256(proof) == on-chain proof_hash", ok: r.proofHashMatches },
-    { label: "sha256(alpha) == on-chain alpha_hash", ok: r.alphaHashMatches },
-    { label: "sha256(memo)  == on-chain memo_hash", ok: r.memoHashMatches },
-    { label: "Authority frozen", ok: r.authorityFrozen },
-    { label: "Authority not revoked", ok: r.authorityNotRevoked },
-    { label: "Authority owner matches", ok: r.authorityOwnerMatches },
-    {
-      label: "Commit bound to derived authority address",
-      ok: r.commitAuthorityMatches,
-    },
-  ];
-  if (outcome.mode === "registry-beta") {
-    checks.push({
-      label: "On-chain beta == vrfProofToHash(proof)",
-      ok: r.betaMatches ?? null,
-    });
+  let checks: { label: string; ok: boolean | null; note?: string }[];
+  if (outcome.kind === "batch") {
+    const b = outcome.result;
+    checks = [
+      { label: "ECVRF math valid", ok: b.ecvrfValid },
+      { label: "Leaf in the committed batch (root + count)", ok: b.leafInBatch },
+      { label: "Leaf version supported (v1)", ok: b.leafVersionSupported },
+      { label: "Authority frozen", ok: b.authorityFrozen },
+      { label: "Batch committed by this authority", ok: b.batchAuthorityMatches },
+      { label: "Authority owner matches", ok: b.authorityOwnerMatches },
+    ];
+  } else {
+    const s = outcome.result;
+    checks = [
+      { label: "Suite supported (0x03 TAI)", ok: s.suiteSupported },
+      { label: "ECVRF math valid", ok: s.ecvrfValid },
+      { label: "sha256(proof) == on-chain proof_hash", ok: s.proofHashMatches },
+      { label: "sha256(alpha) == on-chain alpha_hash", ok: s.alphaHashMatches },
+      { label: "sha256(memo)  == on-chain memo_hash", ok: s.memoHashMatches },
+      { label: "Authority frozen", ok: s.authorityFrozen },
+      { label: "Authority owner matches", ok: s.authorityOwnerMatches },
+      { label: "Commit bound to derived authority address", ok: s.commitAuthorityMatches },
+    ];
+    if (outcome.mode === "registry-beta") {
+      checks.push({ label: "On-chain beta == vrfProofToHash(proof)", ok: s.betaMatches ?? null });
+    }
   }
   return (
     <div
@@ -467,7 +569,39 @@ function Outcome({
             </dd>
           </>
         )}
+        {outcome.kind === "batch" && (
+          <>
+            <dt className="font-semibold uppercase tracking-wider text-ink-400">Batch root</dt>
+            <dd>
+              <span className="break-all font-mono text-ink-200">{bytesToHex(outcome.batch.root)}</span>
+            </dd>
+            <dt className="font-semibold uppercase tracking-wider text-ink-400">Leaf</dt>
+            <dd className="font-mono text-ink-200">
+              {outcome.index} of {outcome.batch.count}
+              {outcome.batch.ringSeq !== null && <> &middot; ring seq {outcome.batch.ringSeq.toString()}</>}
+            </dd>
+            <dt className="font-semibold uppercase tracking-wider text-ink-400">Commit tx</dt>
+            <dd>
+              <a
+                href={explorerTxUrlFor(outcome.batch.txSignature, cluster)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-all font-mono text-accent-300 hover:underline"
+              >
+                {outcome.batch.txSignature}
+              </a>
+              <span className="text-ink-400"> &middot; slot {outcome.batch.slot}</span>
+            </dd>
+          </>
+        )}
       </dl>
+
+      {r.notes.includes("authority-revoked") && (
+        <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+          This authority was marked revoked before the v2 upgrade removed revocation. That flag is informational:
+          the frozen key still proves this result.
+        </div>
+      )}
 
       {!r.valid && r.reasons.length > 0 && (
         <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-200">

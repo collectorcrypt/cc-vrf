@@ -1,5 +1,7 @@
 [workspace]
 members = ["programs/*"]
+# Own workspaces (and only test dev-deps here): the verify crate pins nothing for consumers; the mock is never deployed.
+exclude = ["crates/cc-vrf-verify", "tests/mock-consumer"]
 resolver = "2"
 
 [profile.release]
@@ -11,3 +13,7 @@ codegen-units = 1
 opt-level = 3
 incremental = false
 codegen-units = 1
+
+# Host test/IDL builds only (the SBF build is release): no debug info keeps the light-program-test link small.
+[profile.dev]
+debug = 0

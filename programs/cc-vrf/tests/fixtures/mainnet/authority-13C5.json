@@ -1,0 +1,18 @@
+{
+  "source": "mainnet getCompressedAccount 2026-11-13, slot 469054755",
+  "value": {
+    "hash": "2C7i5ogjEu4wHqKm6h5GqsA3be3Ac5kVkhizS3a2q2H5",
+    "address": "13C5cbemzwSg5wNerJDucU5uUJ1kHQENDqoTa3VSAHau",
+    "data": {
+      "discriminator": "11850391622692358828",
+      "data": "53vWE3CfH8/Yy2QxY+m59WiXVQxtqqNSDj0ZCHa+/P4RXJliN7Ml7eWVXwEgaVOMeZlE+wU1Ie/ZtNZZndDLgwMBAGdhY2hhAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA2ZmFGQAAAAA=",
+      "dataHash": "12M9dWYgm1Qv7K7k2oZ6Z3mv9kUiZ45BqmjH6qdfpxRV"
+    },
+    "owner": "ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ",
+    "lamports": 0,
+    "tree": "bmt1LryLZUMmF7ZtqESaw7wifBXLfXHQYoE4GAmrahU",
+    "leafIndex": 322984,
+    "seq": null,
+    "slotCreated": 428186075
+  }
+}

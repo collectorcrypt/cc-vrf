@@ -13,12 +13,30 @@ no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
-default = ["idl-build"]
+# idl-build is for IDL generation only (anchor adds it); on-chain IDL instructions are gated by no-idl.
+default = []
 idl-build = ["anchor-lang/idl-build", "light-sdk/idl-build"]
 
 [dependencies]
 anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
+# zero_copy (root ring) derives through bytemuck; same version and features the tree already locks.
+bytemuck = { version = "1.25.0", features = ["derive"] }
 
 # Canonical Light Protocol compressed PDA stack — version-matched to cc-auction.
 light-sdk = { version = "0.23.0", features = ["anchor", "cpi-context"] }
 light-hasher = "5.0.0"
+
+[dev-dependencies]
+# Host-only test harness (litesvm 0.7 = solana 2.x, matching anchor 0.31); never in the SBF build.
+light-program-test = "=0.23.0"
+litesvm = "=0.7.1"
+solana-sdk = "2.3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+# Wire pins recompute mainnet account hashes from JSON fixtures.
+light-compressed-account = "=0.11.0"
+light-client = "=0.23.0"
+base64 = "0.22"
+serde_json = "1"
+# Batch trees for the consumer suite, and the mock consumer's instruction builders.
+cc-vrf-verify = { path = "../../crates/cc-vrf-verify" }
+mock-consumer = { path = "../../tests/mock-consumer", features = ["no-entrypoint"] }

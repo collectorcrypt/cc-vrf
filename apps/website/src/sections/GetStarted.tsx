@@ -12,7 +12,7 @@ const QUICKSTART = `import {
   generateKeyPair, proveVRF, vrfProofToHash, bytesToHex,
 } from "@collectorcrypt/vrf-client";
 
-// 1. Operator: keep this secret. Same key forever (or rotate via revoke).
+// 1. Operator: keep this secret. Same key forever (rotate = a new authority under a new label).
 const { sk, pk } = generateKeyPair();
 
 // 2. Per VRF call: alpha is whatever you want bound to this draw.

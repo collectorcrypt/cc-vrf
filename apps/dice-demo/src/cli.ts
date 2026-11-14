@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 import {
+  cmdAttest,
   cmdCost,
   cmdFreeze,
   cmdInit,
-  cmdRevoke,
+  cmdInitRing,
   cmdRoll,
+  cmdRollBatch,
   cmdRollEvent,
   cmdRollWithBeta,
   cmdSimulate,
   cmdSimulateEvent,
   cmdStatus,
   cmdVerify,
+  cmdVerifyBatch,
   cmdVerifyEvent,
   cmdVerifyWithBeta,
 } from "./commands";
@@ -23,7 +26,8 @@ usage: cc-vrf-demo <command> [args]
 lifecycle:
   init                    generate a VRF keypair, init_authority on chain
   freeze                  freeze the authority (lock pk permanently)
-  revoke                  revoke the authority (informational)
+  attest                  attest_possession: prove the VRF key signs for
+                          this authority (opt-in, one-time)
   status                  print local state
 
 pda mode (chain enforces 1-commit-per-memo):
@@ -40,10 +44,18 @@ event mode (cheapest state footprint, verifier-side replay handling):
   verify-event [memo]     fetch events for the memo, pick canonical, verify
   simulate-event <N>      N back-to-back event roll+verify cycles
 
+batch mode (one commit per Merkle root over many rolls):
+  roll-batch [N]          commit_batch_event: N rolls, one root (default 8)
+  verify-batch [memo]     root + count from the tx, proof + path from state
+  init-ring               create the root ring (on-chain readable roots)
+  roll-ring [N]           commit_batch_ring: like roll-batch, also writes
+                          the root into the ring (default 8)
+
 cost:
-  cost [N] [--sol-usd=NN] run N rolls in each mode, report real SOL spent +
-                          extrapolation to 100k. Default N=100. Default
-                          SOL price = 160.
+  cost [N] [--sol-usd=NN] [--batch-size=NN]
+                          run N rolls in each mode, report real SOL spent +
+                          extrapolation to 100k. Default N=100, SOL price =
+                          160, batch size = 100.
 
 env:
   CC_VRF_RPC_URL          Solana cluster RPC (default: devnet)
@@ -64,6 +76,11 @@ function parseSolUsd(args: string[]): number {
   return 160;
 }
 
+function parseBatchSize(args: string[]): number {
+  const a = args.find((x) => x.startsWith("--batch-size="));
+  return a ? Number(a.slice("--batch-size=".length)) : 100;
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const cmd = args[0];
@@ -77,8 +94,8 @@ async function main(): Promise<void> {
       case "freeze":
         await cmdFreeze();
         break;
-      case "revoke":
-        await cmdRevoke();
+      case "attest":
+        await cmdAttest();
         break;
       case "roll":
         await cmdRoll(args[1]);
@@ -104,11 +121,23 @@ async function main(): Promise<void> {
       case "simulate-event":
         await cmdSimulateEvent(Number(args[1]));
         break;
+      case "roll-batch":
+        await cmdRollBatch(args[1] ? Number(args[1]) : 8, false);
+        break;
+      case "roll-ring":
+        await cmdRollBatch(args[1] ? Number(args[1]) : 8, true);
+        break;
+      case "verify-batch":
+        await cmdVerifyBatch(args[1]);
+        break;
+      case "init-ring":
+        await cmdInitRing();
+        break;
       case "cost": {
         const positional = args.slice(1).filter((a) => !a.startsWith("--"));
         const n = positional[0] ? Number(positional[0]) : 100;
         const solUsd = parseSolUsd(args);
-        await cmdCost(n, solUsd);
+        await cmdCost(n, solUsd, parseBatchSize(args));
         break;
       }
       case "status":
@@ -123,4 +152,5 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+// Exit explicitly: the confirmation WebSocket web3.js opens keeps node alive after the command finishes.
+main().then(() => process.exit(0));

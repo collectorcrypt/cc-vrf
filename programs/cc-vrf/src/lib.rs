@@ -4,6 +4,7 @@
 use anchor_lang::prelude::*;
 use light_sdk::{cpi::CpiSigner, derive_light_cpi_signer};
 
+pub mod ed25519;
 pub mod errors;
 pub mod events;
 pub mod instructions;
@@ -61,21 +62,6 @@ pub mod cc_vrf {
         account_meta: CompressedAccountMeta,
     ) -> Result<()> {
         instructions::freeze_authority::freeze_authority_handler(
-            ctx,
-            proof,
-            current_authority,
-            account_meta,
-        )
-    }
-
-    /// Sets the `revoked` flag. Informational only — does not change pk.
-    pub fn revoke_authority<'info>(
-        ctx: Context<'_, '_, '_, 'info, RevokeAuthority<'info>>,
-        proof: ValidityProof,
-        current_authority: VrfAuthority,
-        account_meta: CompressedAccountMeta,
-    ) -> Result<()> {
-        instructions::revoke_authority::revoke_authority_handler(
             ctx,
             proof,
             current_authority,
@@ -167,6 +153,92 @@ pub mod cc_vrf {
             alpha_hash,
             beta_lo,
             beta_hi,
+        )
+    }
+
+    /// Batch-mode commit: one Merkle root over `count` VRF results (batch spec v1), emitted as a
+    /// `VrfBatchCommitted` log. The argument prefix (label, root, count, leaf_version) sits at data[8..77].
+    #[allow(clippy::too_many_arguments)]
+    pub fn commit_batch_event<'info>(
+        ctx: Context<'_, '_, '_, 'info, CommitBatchEvent<'info>>,
+        label: [u8; 32],
+        root: [u8; 32],
+        count: u32,
+        leaf_version: u8,
+        proof: ValidityProof,
+        authority_account_meta: CompressedAccountMetaReadOnly,
+        current_authority: VrfAuthority,
+    ) -> Result<()> {
+        instructions::commit_batch_event::commit_batch_event_handler(
+            ctx,
+            label,
+            root,
+            count,
+            leaf_version,
+            proof,
+            authority_account_meta,
+            current_authority,
+        )
+    }
+
+    /// Creates the authority's root ring (`["root_ring", authority_address]`), for programs that settle
+    /// against batch roots on-chain.
+    pub fn init_root_ring<'info>(
+        ctx: Context<'_, '_, '_, 'info, InitRootRing<'info>>,
+        label: [u8; 32],
+        proof: ValidityProof,
+        authority_account_meta: CompressedAccountMetaReadOnly,
+        current_authority: VrfAuthority,
+    ) -> Result<()> {
+        instructions::root_ring::init_root_ring_handler(
+            ctx,
+            label,
+            proof,
+            authority_account_meta,
+            current_authority,
+        )
+    }
+
+    /// `commit_batch_event` that also records the root in the ring at `expected_seq`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn commit_batch_ring<'info>(
+        ctx: Context<'_, '_, '_, 'info, CommitBatchRing<'info>>,
+        label: [u8; 32],
+        root: [u8; 32],
+        count: u32,
+        leaf_version: u8,
+        expected_seq: u64,
+        proof: ValidityProof,
+        authority_account_meta: CompressedAccountMetaReadOnly,
+        current_authority: VrfAuthority,
+    ) -> Result<()> {
+        instructions::root_ring::commit_batch_ring_handler(
+            ctx,
+            label,
+            root,
+            count,
+            leaf_version,
+            expected_seq,
+            proof,
+            authority_account_meta,
+            current_authority,
+        )
+    }
+
+    /// Opt-in: records that the authority's VRF key signed the 114-byte possession message.
+    pub fn attest_possession<'info>(
+        ctx: Context<'_, '_, '_, 'info, AttestPossession<'info>>,
+        label: [u8; 32],
+        proof: ValidityProof,
+        authority_account_meta: CompressedAccountMetaReadOnly,
+        current_authority: VrfAuthority,
+    ) -> Result<()> {
+        instructions::attest_possession::attest_possession_handler(
+            ctx,
+            label,
+            proof,
+            authority_account_meta,
+            current_authority,
         )
     }
 }

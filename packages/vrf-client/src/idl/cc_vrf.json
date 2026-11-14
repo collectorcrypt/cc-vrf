@@ -8,6 +8,255 @@
   },
   "instructions": [
     {
+      "name": "attest_possession",
+      "docs": [
+        "Opt-in: records that the authority's VRF key signed the 114-byte possession message."
+      ],
+      "discriminator": [
+        61,
+        118,
+        170,
+        169,
+        115,
+        97,
+        81,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "attestation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  114,
+                  102,
+                  95,
+                  112,
+                  111,
+                  112
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "authority_account_meta.address"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "label",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "authority_account_meta",
+          "type": {
+            "defined": {
+              "name": "CompressedAccountMetaReadOnly"
+            }
+          }
+        },
+        {
+          "name": "current_authority",
+          "type": {
+            "defined": {
+              "name": "VrfAuthority"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "commit_batch_event",
+      "docs": [
+        "Batch-mode commit: one Merkle root over `count` VRF results (batch spec v1), emitted as a",
+        "`VrfBatchCommitted` log. The argument prefix (label, root, count, leaf_version) sits at data[8..77]."
+      ],
+      "discriminator": [
+        209,
+        202,
+        223,
+        27,
+        147,
+        144,
+        250,
+        252
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "label",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "count",
+          "type": "u32"
+        },
+        {
+          "name": "leaf_version",
+          "type": "u8"
+        },
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "authority_account_meta",
+          "type": {
+            "defined": {
+              "name": "CompressedAccountMetaReadOnly"
+            }
+          }
+        },
+        {
+          "name": "current_authority",
+          "type": {
+            "defined": {
+              "name": "VrfAuthority"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "commit_batch_ring",
+      "docs": [
+        "`commit_batch_event` that also records the root in the ring at `expected_seq`."
+      ],
+      "discriminator": [
+        154,
+        59,
+        126,
+        206,
+        57,
+        230,
+        75,
+        252
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "root_ring",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "label",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "root",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "count",
+          "type": "u32"
+        },
+        {
+          "name": "leaf_version",
+          "type": "u8"
+        },
+        {
+          "name": "expected_seq",
+          "type": "u64"
+        },
+        {
+          "name": "proof",
+          "type": {
+            "defined": {
+              "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "authority_account_meta",
+          "type": {
+            "defined": {
+              "name": "CompressedAccountMetaReadOnly"
+            }
+          }
+        },
+        {
+          "name": "current_authority",
+          "type": {
+            "defined": {
+              "name": "VrfAuthority"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "commit_proof",
       "docs": [
         "Posts a per-VRF-call commitment to a new VrfProofCommit compressed",
@@ -420,33 +669,81 @@
       ]
     },
     {
-      "name": "revoke_authority",
+      "name": "init_root_ring",
       "docs": [
-        "Sets the `revoked` flag. Informational only — does not change pk."
+        "Creates the authority's root ring (`[\"root_ring\", authority_address]`), for programs that settle",
+        "against batch roots on-chain."
       ],
       "discriminator": [
-        233,
-        254,
-        239,
-        15,
-        49,
-        183,
-        105,
-        21
+        10,
+        207,
+        136,
+        182,
+        112,
+        28,
+        13,
+        255
       ],
       "accounts": [
         {
           "name": "owner",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "root_ring",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  111,
+                  116,
+                  95,
+                  114,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "authority_account_meta.address"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
+        {
+          "name": "label",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
         {
           "name": "proof",
           "type": {
             "defined": {
               "name": "ValidityProof"
+            }
+          }
+        },
+        {
+          "name": "authority_account_meta",
+          "type": {
+            "defined": {
+              "name": "CompressedAccountMetaReadOnly"
             }
           }
         },
@@ -457,15 +754,35 @@
               "name": "VrfAuthority"
             }
           }
-        },
-        {
-          "name": "account_meta",
-          "type": {
-            "defined": {
-              "name": "CompressedAccountMeta"
-            }
-          }
         }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "VrfPossession",
+      "discriminator": [
+        187,
+        111,
+        128,
+        225,
+        132,
+        162,
+        236,
+        255
+      ]
+    },
+    {
+      "name": "VrfRootRing",
+      "discriminator": [
+        68,
+        243,
+        203,
+        201,
+        49,
+        218,
+        228,
+        46
       ]
     }
   ],
@@ -481,6 +798,32 @@
         56,
         150,
         129
+      ]
+    },
+    {
+      "name": "VrfBatchCommitted",
+      "discriminator": [
+        11,
+        12,
+        208,
+        94,
+        185,
+        122,
+        183,
+        162
+      ]
+    },
+    {
+      "name": "VrfPossessionAttested",
+      "discriminator": [
+        227,
+        235,
+        231,
+        92,
+        234,
+        156,
+        103,
+        165
       ]
     },
     {
@@ -573,6 +916,71 @@
       "code": 6009,
       "name": "InvalidPublicKeyLength",
       "msg": "Invalid public key length"
+    },
+    {
+      "code": 6010,
+      "name": "EmptyBatch",
+      "msg": "Batch count must be at least 1"
+    },
+    {
+      "code": 6011,
+      "name": "BatchTooLarge",
+      "msg": "Batch count exceeds 2^20"
+    },
+    {
+      "code": 6012,
+      "name": "UnsupportedLeafVersion",
+      "msg": "Unsupported batch leaf version"
+    },
+    {
+      "code": 6013,
+      "name": "ZeroBatchRoot",
+      "msg": "Batch root must not be zero"
+    },
+    {
+      "code": 6014,
+      "name": "RingAuthorityMismatch",
+      "msg": "Root ring belongs to a different authority"
+    },
+    {
+      "code": 6015,
+      "name": "RingSeqMismatch",
+      "msg": "Root ring sequence does not match expected_seq"
+    },
+    {
+      "code": 6016,
+      "name": "UnsupportedRingVersion",
+      "msg": "Unsupported root ring version"
+    },
+    {
+      "code": 6017,
+      "name": "MissingEd25519Instruction",
+      "msg": "Missing Ed25519 signature instruction"
+    },
+    {
+      "code": 6018,
+      "name": "MultipleEd25519Instructions",
+      "msg": "More than one Ed25519 signature instruction"
+    },
+    {
+      "code": 6019,
+      "name": "MalformedEd25519Instruction",
+      "msg": "Malformed Ed25519 signature instruction"
+    },
+    {
+      "code": 6020,
+      "name": "Ed25519IndirectReference",
+      "msg": "Ed25519 instruction references another instruction's data"
+    },
+    {
+      "code": 6021,
+      "name": "PossessionKeyMismatch",
+      "msg": "Ed25519 public key is not the authority's VRF key"
+    },
+    {
+      "code": 6022,
+      "name": "PossessionMessageMismatch",
+      "msg": "Ed25519 message is not the possession message"
     }
   ],
   "types": [
@@ -739,6 +1147,52 @@
       }
     },
     {
+      "name": "RingEntry",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seq",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          },
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "count",
+            "type": "u32"
+          },
+          {
+            "name": "leaf_version",
+            "type": "u8"
+          },
+          {
+            "name": "_pad",
+            "type": {
+              "array": [
+                "u8",
+                3
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "ValidityProof",
       "type": {
         "kind": "struct",
@@ -759,9 +1213,8 @@
         "Per-operator authority. Locks a published VRF public key on-chain so the",
         "operator cannot silently rotate to a different secret key. The",
         "`frozen` flag is one-way: once set, the pk and suite are permanent.",
-        "`revoked` is informational — a soft-deprecation flag for graceful key",
-        "rotation (the operator creates a new authority and marks the old one",
-        "revoked; historical proofs remain verifiable against the old pk).",
+        "`revoked` stays in the layout but nothing can set it: v2 removed",
+        "`revoke_authority`. Commits still refuse an authority marked revoked.",
         "",
         "Stored as a Light compressed PDA. Seeds:",
         "[\"vrf_authority\", owner_pubkey, label_bytes]"
@@ -805,6 +1258,137 @@
           },
           {
             "name": "created_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VrfBatchCommitted",
+      "docs": [
+        "One Merkle root over `count` VRF results (batch spec v1), from `commit_batch_event` (`ring_seq: None`) or",
+        "`commit_batch_ring` (`ring_seq: Some(seq)`). Verify a leaf with `count`; see crates/cc-vrf-verify."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "label",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "count",
+            "type": "u32"
+          },
+          {
+            "name": "leaf_version",
+            "type": "u8"
+          },
+          {
+            "name": "ring_seq",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "committed_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VrfPossession",
+      "docs": [
+        "Exists iff the VRF key signed the possession message for this authority. Seeds: [\"vrf_pop\", authority_address]."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pk",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VrfPossessionAttested",
+      "docs": [
+        "`attest_possession` succeeded: the VRF key signed the possession message for this authority."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "label",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "pk",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "slot",
             "type": "u64"
           }
         ]
@@ -918,8 +1502,8 @@
           {
             "name": "beta_lo",
             "docs": [
-              "First 32 bytes of the 64-byte beta. Split because LightHasher caps",
-              "each field at 32 bytes."
+              "First 32 bytes of the 64-byte beta. The split is the RC1 layout; the",
+              "account is hashed flat (sha256 of its borsh bytes), not per field."
             ],
             "type": {
               "array": [
@@ -957,11 +1541,11 @@
         "using the same seed derivation as a `VrfAuthority`, then look up the",
         "authority's compressed PDA for the published pk / suite / frozen state.",
         "",
-        "Replay protection is moved from the chain to the verifier: a malicious",
-        "operator could emit two events with the same `memo_hash` and different",
-        "`proof_hash`es. The VRF proof is deterministic given the pk + alpha, so at",
-        "most one of those would pass ECVRF verification — verifiers must scan for",
-        "duplicates and pick the canonical commit."
+        "Replay protection is moved from the chain to the verifier: an operator",
+        "could emit two events with the same `memo_hash` and different",
+        "`proof_hash`es. ECVRF output is unique per (pk, alpha): every proof that",
+        "verifies yields the same beta, so duplicates cannot change the result;",
+        "verifiers match `proof_hash` against the proof they hold."
       ],
       "type": {
         "kind": "struct",
@@ -1016,6 +1600,98 @@
           {
             "name": "committed_slot",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VrfRootRing",
+      "docs": [
+        "The last 128 batch roots of one authority, readable by other programs without CPI.",
+        "Entry `seq` lives at `entries[seq % 128]` and is live iff `seq != 0 && entries[seq % 128].seq == seq`.",
+        "Seeds: [\"root_ring\", authority_address]. 7,352 bytes with the discriminator."
+      ],
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "capacity",
+            "type": "u16"
+          },
+          {
+            "name": "_pad",
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "next_seq",
+            "docs": [
+              "Sequence the next commit must claim; starts at 1."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "The authority's compressed-account address."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "label",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "entries",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "RingEntry"
+                  }
+                },
+                128
+              ]
+            }
           }
         ]
       }

@@ -204,7 +204,7 @@ export async function buildReadOnlyAuthorityContext(
 }
 
 /**
- * For MUTATE flows (freeze_authority, revoke_authority): builds the
+ * For MUTATE flows (freeze_authority): builds the
  * validity-proof bundle + account meta for an existing compressed PDA.
  */
 export async function buildMutateContext(

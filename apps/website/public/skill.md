@@ -37,8 +37,11 @@ Compressed PDAs and events:
 | `VrfProofCommit` | `["vrf_proof", authority_pda, memo_hash]` | Per-VRF-call commitment: `sha256(proof)`, `sha256(alpha)`, `sha256(memo)`, slot. Memo collision impossible by construction (memo_hash is part of the seed). |
 | `VrfProofCommitWithBeta` | `["vrf_proof", authority_pda, memo_hash]` | Same namespace as `VrfProofCommit`, plus 64-byte beta for on-chain consumers. One memo can use either registry shape, not both. |
 | `VrfProofCommitted` | event | Verified frozen authority + per-call commitment in tx logs. Verifiers handle duplicate memos with `pickCanonicalCommit`. |
+| `VrfBatchCommitted` | event | One Merkle root + leaf `count` over many results (batch spec v1, `commit_batch_event` / `commit_batch_ring`). Verify a result with `verifyBatchCommitEndToEnd` (leaf index + path). |
+| `VrfRootRing` | `["root_ring", authority_pda]` | Plain account holding the last 128 batch roots, for programs that settle on-chain (`crates/cc-vrf-verify`). |
+| `VrfPossession` | `["vrf_pop", authority_pda]` | Exists iff the VRF key signed the 114-byte possession message (`attest_possession`, opt-in). |
 
-Six instructions: `init_authority`, `freeze_authority`, `revoke_authority`, `commit_proof`, `commit_proof_with_beta`, `commit_proof_event`.
+Nine instructions: `init_authority`, `freeze_authority`, `commit_proof`, `commit_proof_with_beta`, `commit_proof_event`, `commit_batch_event`, `init_root_ring`, `commit_batch_ring`, `attest_possession`. There is no revoke: a frozen authority stays usable, and `revoked` only remains in the layout for authorities revoked before v2.
 
 ## Add to your project
 
@@ -210,7 +213,7 @@ export async function POST(req: Request) {
 ## Reference
 
 - **Program ID:** `ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ` (same on devnet + mainnet)
-- **Clusters:** devnet + mainnet (live; upgrade authority held by the deployer)
+- **Clusters:** devnet + mainnet (live). Mainnet upgrades go through the Squads vault `2Ef85QR7xrGJPdSvFcDz6X9ctqUoSptpi4vsnejpPAZQ`.
 - **Browse operators:** https://vrf.collectorcrypt.com/#/lookup
 - **Verify a roll:** https://vrf.collectorcrypt.com/#/verify
 - **Source:** https://github.com/collectorcrypt/cc-vrf

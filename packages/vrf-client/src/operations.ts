@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { BorshCoder, Program } from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
 import {
   Connection,
   PublicKey,
@@ -30,6 +30,7 @@ import {
   buildReadOnlyAuthorityContext,
   forceLightV2,
 } from "./light";
+import { decodeCcVrfTransaction, nameIs, tryGetTransaction } from "./logs";
 import { OnChainAuthority, OnChainCommit } from "./verifyEndToEnd";
 
 /**
@@ -256,25 +257,6 @@ export async function buildFreezeAuthorityIx(
   return ix;
 }
 
-export async function buildRevokeAuthorityIx(
-  program: Program,
-  rpc: Rpc,
-  input: FreezeAuthorityInput,
-): Promise<TransactionInstruction> {
-  const auth = await fetchAuthority(program, rpc, input.owner, input.label);
-  if (!auth) throw new Error("authority not found");
-
-  const ctx = await buildMutateContext(rpc, program.programId, auth.account);
-
-  const ix = await program.methods
-    // @ts-ignore: Anchor IDL types are dynamic at this layer
-    .revokeAuthority(ctx.proof, auth.decoded, ctx.accountMeta)
-    .accounts({ owner: input.owner } as never)
-    .remainingAccounts(ctx.remainingAccountMetas)
-    .instruction();
-  return ix;
-}
-
 export interface CommitProofInput {
   owner: PublicKey;
   label: string | Uint8Array;
@@ -283,9 +265,11 @@ export interface CommitProofInput {
   proof: Uint8Array;
 }
 
-type FetchedAuthority = NonNullable<Awaited<ReturnType<typeof fetchAuthority>>>;
+export type FetchedAuthority = NonNullable<
+  Awaited<ReturnType<typeof fetchAuthority>>
+>;
 
-function assertAuthorityCanCommit(
+export function assertAuthorityCanCommit(
   auth: FetchedAuthority | null,
 ): asserts auth is FetchedAuthority {
   if (!auth) throw new Error("authority not found");
@@ -366,8 +350,8 @@ export async function buildCommitProofIx(
  * event rather than writing a compressed PDA.
  *
  * The trade-off is that the chain doesn't enforce one-commit-per-memo;
- * verifiers must scan for duplicate `memo_hash` events and pick the one where
- * ECVRF math passes.
+ * verifiers match `proof_hash` against the proof they hold (see
+ * `pickCanonicalCommit`).
  */
 export async function buildCommitProofEventIx(
   program: Program,
@@ -496,11 +480,10 @@ export interface ProofCommitEventResult {
  *   2. Runs `verifyAuthorityCommitEndToEnd` against each candidate proof.
  *   3. Accepts the unique row where the ECVRF math passes.
  *
- * Because ECVRF proofs are deterministic for a fixed (pk, alpha), at most one
- * candidate can have a valid `proof_hash`. The presence of extra events is
- * detectable noise, not a successful forgery — but a naive verifier that picks
- * "the latest event" without running ECVRF can be misled (see
- * `pickCanonicalCommit`).
+ * ECVRF output is unique per (pk, alpha): every proof that verifies yields the
+ * same beta, so extra events cannot change the result. A naive verifier that
+ * picks "the latest event" without checking `proof_hash` against the proof and
+ * running ECVRF can still be misled (see `pickCanonicalCommit`).
  *
  * `connection` and `programId` are passed in explicitly so log scanning works
  * against a plain Solana RPC. Fetching compressed authority state still needs a
@@ -517,24 +500,6 @@ export async function findProofCommitEvents(
   const labelBytes = typeof label === "string" ? encodeLabel(label) : label;
   const targetMemoHash = memoHashFn(memo);
 
-  // Decode `Program data:` lines directly instead of via EventParser: Anchor's
-  // parser also tries to decode `Program log: Instruction: <name>`, and that
-  // failure aborts the whole scan before it reaches the real event line.
-  // Only lines our program wrote count: any program can print the same bytes.
-  const coder = new BorshCoder(program.idl);
-  const programIdBase58 = program.programId.toBase58();
-  const decodeEvents = (logMessages: string[]) => {
-    const decoded: { name: string; data: unknown }[] = [];
-    for (const b64 of ownProgramDataLines(logMessages, programIdBase58)) {
-      try {
-        const ev = coder.events.decode(b64);
-        if (ev) decoded.push(ev);
-      } catch {
-        /* not one of our events */
-      }
-    }
-    return decoded;
-  };
   const out: ProofCommitEvent[] = [];
   const unfetchedSignatures: string[] = [];
 
@@ -572,56 +537,41 @@ export async function findProofCommitEvents(
     return true;
   };
 
-  // Fetch a single tx, treating RPC failure (retention gap / throttling returns
-  // null or throws) as a recoverable miss rather than crashing the scan.
-  const tryGetTx = async (signature: string) => {
-    try {
-      return await connection.getTransaction(signature, {
-        commitment: "confirmed",
-        maxSupportedTransactionVersion: 0,
-      });
-    } catch {
-      return null;
-    }
-  };
+  const tryGetTx = (signature: string) =>
+    tryGetTransaction(connection, signature);
 
-  type FetchedTx = NonNullable<Awaited<ReturnType<typeof tryGetTx>>>;
-
-  // The signed commit_proof_event instruction carries the same commitment as
-  // the log event; read it when the RPC returned no usable log.
-  const collectFromInstructions = (signature: string, tx: FetchedTx) => {
-    const msg = tx.transaction.message;
-    let keys;
-    try {
-      keys = msg.getAccountKeys({
-        accountKeysFromLookups: tx.meta?.loadedAddresses,
-      });
-    } catch {
-      return;
+  // Events written under our own invoke frames, else the signed commit_proof_event instruction (it carries the same
+  // commitment) when the RPC returned no usable log. A failed tx yields nothing.
+  const collectFromTx = (
+    signature: string,
+    tx: Awaited<ReturnType<typeof tryGetTx>>,
+  ) => {
+    if (!tx) return;
+    const { events, instructions } = decodeCcVrfTransaction(program, tx);
+    let found = false;
+    for (const ev of events) {
+      if (!nameIs(ev.name, "vrf_proof_committed")) continue;
+      const data = ev.data;
+      found =
+        accept(
+          signature,
+          tx.slot,
+          data.owner,
+          Uint8Array.from(data.label),
+          Uint8Array.from(data.memoHash ?? data.memo_hash),
+          Uint8Array.from(data.proofHash ?? data.proof_hash),
+          Uint8Array.from(data.alphaHash ?? data.alpha_hash),
+          BigInt((data.committedSlot ?? data.committed_slot).toString()),
+        ) || found;
     }
-    for (const ix of msg.compiledInstructions) {
-      if (!keys.get(ix.programIdIndex)?.equals(program.programId)) continue;
-      let decoded;
-      try {
-        decoded = coder.instruction.decode(Buffer.from(ix.data));
-      } catch {
-        continue;
-      }
-      if (
-        !decoded ||
-        (decoded.name !== "commitProofEvent" &&
-          decoded.name !== "commit_proof_event")
-      )
-        continue;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const d = decoded.data as any;
-      // Account 0 is the owner Signer; the tx succeeded, so the program checked it.
-      const ixOwner = keys.get(ix.accountKeyIndexes[0]);
-      if (!ixOwner) continue;
+    if (found) return;
+    for (const ix of instructions) {
+      if (!nameIs(ix.name, "commit_proof_event")) continue;
+      const d = ix.data;
       accept(
         signature,
         tx.slot,
-        ixOwner,
+        ix.owner,
         Uint8Array.from(d.label),
         Uint8Array.from(d.memoHash ?? d.memo_hash),
         Uint8Array.from(d.proofHash ?? d.proof_hash),
@@ -629,34 +579,6 @@ export async function findProofCommitEvents(
         BigInt(tx.slot),
       );
     }
-  };
-
-  // Extract any matching commit from one fetched tx.
-  const collectFromTx = (
-    signature: string,
-    tx: Awaited<ReturnType<typeof tryGetTx>>,
-  ) => {
-    // A failed tx committed nothing, even when its logs show the event.
-    if (!tx?.meta || tx.meta.err) return;
-    let found = false;
-    for (const ev of decodeEvents(tx.meta.logMessages ?? [])) {
-      if (ev.name !== "VrfProofCommitted" && ev.name !== "vrfProofCommitted")
-        continue;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = ev.data as any;
-      found =
-        accept(
-          signature,
-          tx.slot,
-          data.owner,
-          Uint8Array.from(data.label),
-          Uint8Array.from(data.memoHash),
-          Uint8Array.from(data.proofHash),
-          Uint8Array.from(data.alphaHash),
-          BigInt(data.committedSlot.toString()),
-        ) || found;
-    }
-    if (!found) collectFromInstructions(signature, tx);
   };
 
   // Direct-by-signature mode: robust, no history scan, never truncated.
@@ -732,41 +654,7 @@ export async function fetchProofCommitEvents(
   return events;
 }
 
-const BASE58_ID = "[1-9A-HJ-NP-Za-km-z]{32,44}";
-const INVOKE_RE = new RegExp(`^Program (${BASE58_ID}) invoke \\[\\d+\\]$`);
-const EXIT_RE = new RegExp(`^Program (${BASE58_ID}) (success|failed)`);
-const DATA_RE = /^Program data: (\S+)$/;
-
-/**
- * The `Program data:` payloads written while `programId` was the executing
- * program, attributed by the runtime's invoke / success / failed lines. A
- * program's own output is prefixed `Program log:` or `Program data:`, so it
- * cannot fake those lines; any program can print event bytes, though, so a
- * verifier must ignore data lines written under another program.
- */
-export function ownProgramDataLines(
-  logMessages: string[],
-  programId: string,
-): string[] {
-  const stack: string[] = [];
-  const out: string[] = [];
-  for (const line of logMessages) {
-    const invoke = INVOKE_RE.exec(line);
-    if (invoke) {
-      stack.push(invoke[1]);
-      continue;
-    }
-    if (EXIT_RE.test(line)) {
-      stack.pop();
-      continue;
-    }
-    const data = DATA_RE.exec(line);
-    if (data && stack[stack.length - 1] === programId) out.push(data[1]);
-  }
-  return out;
-}
-
-function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
   return true;

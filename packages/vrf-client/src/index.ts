@@ -13,9 +13,11 @@ export {
   proveVRF,
   verifyVRF,
   vrfProofToHash,
+  vrfStream,
   bytesToHex,
   hexToBytes,
 } from "@collectorcrypt/ecvrf";
+export type { VrfStream } from "@collectorcrypt/ecvrf";
 
 export { CC_VRF_PROGRAM_ID, SUITE_EDWARDS25519_SHA512_TAI } from "./constants";
 
@@ -42,7 +44,6 @@ export { getProgram } from "./program";
 export {
   buildInitAuthorityIx,
   buildFreezeAuthorityIx,
-  buildRevokeAuthorityIx,
   buildCommitProofIx,
   buildCommitProofEventIx,
   buildCommitProofWithBetaIx,
@@ -51,7 +52,6 @@ export {
   fetchProofCommitWithBeta,
   fetchProofCommitEvents,
   findProofCommitEvents,
-  ownProgramDataLines,
   decodeAuthority,
   decodeProofCommit,
   decodeProofCommitWithBeta,
@@ -72,6 +72,56 @@ export {
   verifyAuthorityCommitEndToEnd,
   pickCanonicalCommit,
 } from "./verifyEndToEnd";
+
+export { ownProgramDataLines, decodeCcVrfTransaction } from "./logs";
+export type { DecodedEvent, DecodedInstruction } from "./logs";
+
+export {
+  BATCH_LEAF_VERSION,
+  MAX_BATCH_COUNT,
+  batchLeafV1,
+  batchLeafFromPack,
+  batchNode,
+  buildBatch,
+  verifyInclusion,
+  verifyBatchPath,
+  buildCommitBatchEventIx,
+  findBatchCommits,
+  verifyBatchCommitEndToEnd,
+} from "./batch";
+export type {
+  Batch,
+  BatchCommit,
+  BatchLeafFields,
+  CommitBatchInput,
+  VerifyBatchCommitInput,
+  VerifyBatchCommitResult,
+} from "./batch";
+
+export {
+  ROOT_RING_SEED,
+  RING_CAPACITY,
+  RING_ACCOUNT_LEN,
+  RING_DISCRIMINATOR,
+  deriveRootRingAddress,
+  decodeRootRing,
+  rootRingEntry,
+  fetchRootRing,
+  buildInitRootRingIx,
+  buildCommitBatchRingIx,
+} from "./ring";
+export type { RootRing, RootRingEntry } from "./ring";
+
+export {
+  POSSESSION_DOMAIN,
+  POSSESSION_MESSAGE_LEN,
+  POSSESSION_DISCRIMINATOR,
+  possessionMessage,
+  signPossessionMessage,
+  derivePossessionAddress,
+  buildAttestPossessionIxs,
+  fetchPossession,
+} from "./possession";
 
 export type {
   OnChainAuthority,

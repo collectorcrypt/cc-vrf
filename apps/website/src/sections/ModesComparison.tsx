@@ -3,16 +3,17 @@ export function ModesComparison() {
     <section className="container-wide flex flex-col gap-6" id="modes">
       <header className="flex flex-col gap-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-accent-500">
-          Three commit modes
+          Four commit modes
         </span>
-        <h2 className="section-title">Three ways to commit the same proof.</h2>
+        <h2 className="section-title">Four ways to commit the same proof.</h2>
         <p className="max-w-3xl text-ink-300">
-          All three modes run the same RFC 9381 ECVRF math against the same
-          frozen authority. They differ in how each commit is stored on chain.
+          All four modes run the same RFC 9381 ECVRF math against the same
+          frozen authority. They differ in how each commit is stored on chain,
+          and batch mode commits many results at once.
         </p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <ModeCard
           name="Registry"
           instruction="commit_proof"
@@ -47,6 +48,20 @@ export function ModesComparison() {
           best="High-throughput, gacha, internal randomness"
           highlight
           href="#/events"
+        />
+        <ModeCard
+          name="Batch"
+          instruction="commit_batch_event"
+          cost="1 tx per batch"
+          per100k="1 tx (a batch holds up to 2^20)"
+          storage="Merkle root + count in a log event (optional 128-root ring account)"
+          replay={
+            <span className="text-amber-400">
+              Verifier-side: leaf + path + committed count
+            </span>
+          }
+          best="Any volume at a flat cost; on-chain settlement via the root ring"
+          href="#/batch"
         />
       </div>
 

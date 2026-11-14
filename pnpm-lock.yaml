@@ -37,7 +37,7 @@ importers:
         version: 0.32.1(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
       '@lightprotocol/stateless.js':
         specifier: ^0.23.3
-        version: 0.23.3(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3))
+        version: 0.23.3(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6))
       '@noble/hashes':
         specifier: ^2.4.0
         version: 2.4.0
@@ -71,7 +71,7 @@ importers:
         version: 0.32.1(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
       '@lightprotocol/stateless.js':
         specifier: ^0.23.3
-        version: 0.23.3(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3))
+        version: 0.23.3(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6))
       '@noble/hashes':
         specifier: ^2.4.0
         version: 2.4.0
@@ -157,12 +157,15 @@ importers:
         version: 0.32.1(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
       '@lightprotocol/stateless.js':
         specifier: ^0.23.3
-        version: 0.23.3(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3))
+        version: 0.23.3(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6))
+      '@noble/ed25519':
+        specifier: ^3.2.0
+        version: 3.2.0
       '@noble/hashes':
         specifier: ^2.4.0
         version: 2.4.0
       '@solana/web3.js':
-        specifier: ^1.99.0
+        specifier: ^1.98.4
         version: 1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
     devDependencies:
       '@types/node':
@@ -5126,7 +5129,7 @@ snapshots:
   '@coral-xyz/anchor@0.32.1(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6)':
     dependencies:
       '@coral-xyz/anchor-errors': 0.31.1
-      '@coral-xyz/borsh': 0.31.1(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3))
+      '@coral-xyz/borsh': 0.31.1(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6))
       '@noble/hashes': 1.8.0
       '@solana/web3.js': 1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
       bn.js: 5.2.5
@@ -5144,13 +5147,13 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@coral-xyz/borsh@0.29.0(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3))':
+  '@coral-xyz/borsh@0.29.0(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6))':
     dependencies:
       '@solana/web3.js': 1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
       bn.js: 5.2.5
       buffer-layout: 1.2.2
 
-  '@coral-xyz/borsh@0.31.1(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3))':
+  '@coral-xyz/borsh@0.31.1(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6))':
     dependencies:
       '@solana/web3.js': 1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
       bn.js: 5.2.5
@@ -5419,9 +5422,9 @@ snapshots:
 
   '@ledgerhq/logs@6.20.0': {}
 
-  '@lightprotocol/stateless.js@0.23.3(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3))':
+  '@lightprotocol/stateless.js@0.23.3(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6))':
     dependencies:
-      '@coral-xyz/borsh': 0.29.0(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3))
+      '@coral-xyz/borsh': 0.29.0(@solana/web3.js@1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6))
       '@noble/hashes': 1.5.0
       '@solana/web3.js': 1.99.0(bufferutil@4.2.0)(typescript@6.0.3)(utf-8-validate@6.0.6)
       bn.js: 5.2.5
@@ -5937,7 +5940,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
@@ -9639,7 +9642,7 @@ snapshots:
 
   isexe@2.0.0: {}
 
-  isomorphic-ws@4.0.1(ws@7.5.14(bufferutil@4.2.0)):
+  isomorphic-ws@4.0.1(ws@7.5.14(bufferutil@4.2.0)(utf-8-validate@6.0.6)):
     dependencies:
       ws: 7.5.14(bufferutil@4.2.0)(utf-8-validate@6.0.6)
 
@@ -9660,7 +9663,7 @@ snapshots:
       delay: 5.0.0
       es6-promisify: 5.0.0
       eyes: 0.1.8
-      isomorphic-ws: 4.0.1(ws@7.5.14(bufferutil@4.2.0))
+      isomorphic-ws: 4.0.1(ws@7.5.14(bufferutil@4.2.0)(utf-8-validate@6.0.6))
       json-stringify-safe: 5.0.1
       stream-json: 1.9.1
       uuid: 8.3.2
@@ -10182,8 +10185,8 @@ snapshots:
   ox@0.6.7(typescript@6.0.3)(zod@3.22.4):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
-      '@noble/curves': 1.8.1
-      '@noble/hashes': 1.7.1
+      '@noble/curves': 1.9.7
+      '@noble/hashes': 1.8.0
       '@scure/bip32': 1.6.2
       '@scure/bip39': 1.5.4
       abitype: 1.0.8(typescript@6.0.3)(zod@3.22.4)

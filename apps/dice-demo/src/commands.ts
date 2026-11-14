@@ -3,6 +3,7 @@ import {
   LAMPORTS_PER_SOL,
   PublicKey,
   Transaction,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
@@ -15,17 +16,27 @@ import {
   SUITE_EDWARDS25519_SHA512_TAI,
   buildInitAuthorityIx,
   buildFreezeAuthorityIx,
-  buildRevokeAuthorityIx,
   buildCommitProofIx,
   buildCommitProofEventIx,
   buildCommitProofWithBetaIx,
+  buildCommitBatchEventIx,
+  buildCommitBatchRingIx,
+  buildInitRootRingIx,
+  buildAttestPossessionIxs,
+  batchLeafV1,
+  buildBatch,
   fetchAuthority,
   fetchProofCommit,
   fetchProofCommitWithBeta,
-  fetchProofCommitEvents,
+  fetchPossession,
+  fetchRootRing,
+  findBatchCommits,
+  findProofCommitEvents,
   getProgram,
   pickCanonicalCommit,
+  rootRingEntry,
   verifyAuthorityCommitEndToEnd,
+  verifyBatchCommitEndToEnd,
   encodeLabel,
 } from "@collectorcrypt/vrf-client";
 
@@ -98,27 +109,6 @@ export async function cmdFreeze(): Promise<void> {
     [],
   );
   console.log("authority frozen.");
-  console.log("  signature:", sig);
-}
-
-export async function cmdRevoke(): Promise<void> {
-  const state = loadState();
-  if (!state.vrfSk) throw new Error("run `init` first");
-
-  const payer = loadPayer();
-  const provider = buildAnchorProvider(payer);
-  const rpc = buildLightRpc();
-  const program = getProgram(provider);
-
-  const ix = await buildRevokeAuthorityIx(program, rpc, {
-    owner: payer.publicKey,
-    label: state.label,
-  });
-  const sig = await provider.sendAndConfirm(
-    withComputeBudget(new Transaction().add(ix)),
-    [],
-  );
-  console.log("authority revoked.");
   console.log("  signature:", sig);
 }
 
@@ -401,15 +391,23 @@ export async function cmdVerifyEvent(memo?: string): Promise<void> {
   const auth = await fetchAuthority(program, rpc, payer.publicKey, state.label);
   if (!auth) throw new Error("authority not found on chain");
 
-  const events = await fetchProofCommitEvents(
-    program,
-    provider.connection,
-    payer.publicKey,
-    state.label,
-    targetMemo,
-  );
-  if (events.length === 0)
-    throw new Error("no events found on chain for this memo");
+  // The stored signature avoids scanning the owner's whole wallet history.
+  const { events, truncated, unfetchedSignatures } =
+    await findProofCommitEvents(
+      program,
+      provider.connection,
+      payer.publicKey,
+      state.label,
+      targetMemo,
+      stored.txSignature ? { signature: stored.txSignature } : {},
+    );
+  if (events.length === 0) {
+    throw new Error(
+      truncated || unfetchedSignatures.length > 0
+        ? "no events found, but the lookup was incomplete (scan limit or unfetchable transactions)"
+        : "no events found on chain for this memo",
+    );
+  }
 
   const picked = pickCanonicalCommit(
     events.map((e) => e.onChainCommit),
@@ -451,6 +449,233 @@ export async function cmdVerifyEvent(memo?: string): Promise<void> {
     "  beta first 8B: ",
     result.beta ? bytesToHex(result.beta).slice(0, 16) : "(invalid)",
   );
+}
+
+function rollValueOf(beta: Uint8Array): number {
+  return Number(BigInt("0x" + bytesToHex(beta).slice(0, 16)) % 100n) + 1; // 1..100
+}
+
+/** Proves `n` rolls and their batch spec v1 leaves. */
+function proveRolls(sk: Uint8Array, prefix: string, n: number) {
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return Array.from({ length: n }, (_, i) => {
+    const memo = `${prefix}-${stamp}-${i}`;
+    const alpha = sha256(new TextEncoder().encode(memo));
+    const { proof } = proveVRF(sk, alpha);
+    const beta = vrfProofToHash(proof);
+    return {
+      memo,
+      alpha,
+      proof,
+      beta,
+      leaf: batchLeafV1({ memo, alpha, proof, beta }),
+    };
+  });
+}
+
+/**
+ * Rolls `n` dice and commits all of them as ONE Merkle root: commit_batch_event, or commit_batch_ring when `ring`
+ * (which also records the root in the authority's root ring; run `init-ring` first).
+ */
+export async function cmdRollBatch(n: number, ring: boolean): Promise<void> {
+  if (!Number.isInteger(n) || n < 1 || n > 4096)
+    throw new Error("batch size must be 1..4096");
+  const state = loadState();
+  if (!state.vrfSk || !state.vrfPk) throw new Error("run `init` first");
+  const sk = hexToBytes(state.vrfSk);
+
+  const payer = loadPayer();
+  const provider = buildAnchorProvider(payer);
+  const rpc = buildLightRpc();
+  const program = getProgram(provider);
+
+  const rolls = proveRolls(sk, ring ? "dice-ring" : "dice-batch", n);
+  const batch = buildBatch(rolls.map((r) => r.leaf));
+  const input = {
+    owner: payer.publicKey,
+    label: state.label,
+    root: batch.root,
+    count: batch.count,
+  };
+  let ix: TransactionInstruction;
+  let ringSeq: bigint | undefined;
+  if (ring) {
+    ({ ix, seq: ringSeq } = await buildCommitBatchRingIx(program, rpc, input));
+  } else {
+    ix = await buildCommitBatchEventIx(program, rpc, input);
+  }
+  const sig = await provider.sendAndConfirm(
+    withComputeBudget(new Transaction().add(ix)),
+    [],
+  );
+
+  const committedAtIso = new Date().toISOString();
+  rolls.forEach((r, i) =>
+    state.rolls.push({
+      memo: r.memo,
+      alpha: bytesToHex(r.alpha),
+      proof: bytesToHex(r.proof),
+      beta: bytesToHex(r.beta),
+      rollValue: rollValueOf(r.beta),
+      commitAddressBase58: "(batch mode — no PDA address)",
+      committedAtIso,
+      mode: ring ? "ring" : "batch",
+      txSignature: sig,
+      batchIndex: i,
+      batchPath: batch.path(i).map(bytesToHex),
+      ringSeq: ringSeq?.toString(),
+    }),
+  );
+  saveState(state);
+
+  console.log(`rolled ${n} dice in one ${ring ? "ring" : "batch"} commit`);
+  console.log(
+    "  values:      ",
+    rolls.map((r) => rollValueOf(r.beta)).join(" "),
+  );
+  console.log("  root:        ", bytesToHex(batch.root));
+  if (ringSeq !== undefined) console.log("  ring seq:    ", ringSeq.toString());
+  console.log("  last memo:   ", rolls[n - 1].memo);
+  console.log("  tx sig:      ", sig);
+}
+
+/** Verifies one batch or ring roll: root and count from the chain, proof + path from local state. */
+export async function cmdVerifyBatch(memo?: string): Promise<void> {
+  const state = loadState();
+  const stored = memo
+    ? state.rolls.find((r) => r.memo === memo)
+    : [...state.rolls]
+        .reverse()
+        .find((r) => r.mode === "batch" || r.mode === "ring");
+  if (!stored) throw new Error("no batch roll found in local roll history");
+  if (
+    stored.batchIndex === undefined ||
+    !stored.batchPath ||
+    !stored.txSignature
+  ) {
+    throw new Error(`memo ${stored.memo} is not a batch roll`);
+  }
+
+  const payer = loadPayer();
+  const provider = buildAnchorProvider(payer);
+  const rpc = buildLightRpc();
+  const program = getProgram(provider);
+
+  const { commits, unfetched } = await findBatchCommits(
+    program,
+    provider.connection,
+    stored.txSignature,
+  );
+  if (unfetched)
+    throw new Error(`RPC returned no transaction for ${stored.txSignature}`);
+  if (commits.length !== 1)
+    throw new Error(`expected one batch commit, found ${commits.length}`);
+  const batch = commits[0];
+  const auth = await fetchAuthority(program, rpc, batch.owner, batch.label);
+  if (!auth) throw new Error("authority not found on chain");
+
+  const result = verifyBatchCommitEndToEnd({
+    authority: auth.onChainAuthority,
+    batch,
+    memo: stored.memo,
+    alpha: hexToBytes(stored.alpha),
+    proof: hexToBytes(stored.proof),
+    index: stored.batchIndex,
+    path: stored.batchPath.map(hexToBytes),
+    expectedOwner: payer.publicKey,
+    expectedLabel: encodeLabel(state.label),
+  });
+
+  console.log(`verify (${stored.mode})`, stored.memo);
+  console.log(
+    "  batch:          ",
+    `${batch.count} leaves, index ${stored.batchIndex}`,
+  );
+  console.log("  ecvrf-valid:    ", result.ecvrfValid);
+  console.log("  leaf-in-batch:  ", result.leafInBatch);
+  console.log("  VALID:          ", result.valid);
+  if (!result.valid) console.log("  reasons:", result.reasons);
+  if (result.notes.length > 0) console.log("  notes:", result.notes);
+  console.log(
+    "  beta first 8B: ",
+    result.beta ? bytesToHex(result.beta).slice(0, 16) : "(invalid)",
+  );
+  if (batch.ringSeq !== null) {
+    const ring = await fetchRootRing(
+      provider.connection,
+      auth.authorityAddress,
+    );
+    const entry = ring ? rootRingEntry(ring.data, batch.ringSeq) : null;
+    const matches =
+      entry !== null &&
+      bytesToHex(entry.root) === bytesToHex(batch.root) &&
+      entry.count === batch.count;
+    console.log(
+      "  ring entry:     ",
+      entry === null
+        ? `seq ${batch.ringSeq} evicted (128 newer commits) or missing`
+        : matches
+          ? `seq ${batch.ringSeq} live, matches`
+          : `seq ${batch.ringSeq} live, DOES NOT MATCH the commit`,
+    );
+  }
+}
+
+/** Creates the authority's root ring (7,352-byte account, rent ~0.038 SOL), needed before `roll-ring`. */
+export async function cmdInitRing(): Promise<void> {
+  const state = loadState();
+  if (!state.vrfSk) throw new Error("run `init` first");
+
+  const payer = loadPayer();
+  const provider = buildAnchorProvider(payer);
+  const rpc = buildLightRpc();
+  const program = getProgram(provider);
+
+  const { ix, ringAddress } = await buildInitRootRingIx(program, rpc, {
+    owner: payer.publicKey,
+    label: state.label,
+  });
+  const sig = await provider.sendAndConfirm(
+    withComputeBudget(new Transaction().add(ix)),
+    [],
+  );
+  console.log("root ring created at:", ringAddress.toBase58());
+  console.log("  signature:", sig);
+}
+
+/** attest_possession: the VRF key signs the 114-byte possession message; the program records it in a PDA. */
+export async function cmdAttest(): Promise<void> {
+  const state = loadState();
+  if (!state.vrfSk) throw new Error("run `init` first");
+
+  const payer = loadPayer();
+  const provider = buildAnchorProvider(payer);
+  const rpc = buildLightRpc();
+  const program = getProgram(provider);
+
+  const { ixs, attestationAddress } = await buildAttestPossessionIxs(
+    program,
+    rpc,
+    {
+      owner: payer.publicKey,
+      label: state.label,
+      vrfSecretKey: hexToBytes(state.vrfSk),
+    },
+  );
+  const sig = await provider.sendAndConfirm(
+    withComputeBudget(new Transaction().add(...ixs)),
+    [],
+  );
+  const auth = await fetchAuthority(program, rpc, payer.publicKey, state.label);
+  const recorded = auth
+    ? await fetchPossession(provider.connection, auth.authorityAddress)
+    : null;
+  console.log("possession attested at:", attestationAddress.toBase58());
+  console.log(
+    "  recorded pk:",
+    recorded ? bytesToHex(recorded.pk) : "(not found yet)",
+  );
+  console.log("  signature:", sig);
 }
 
 export async function cmdSimulateEvent(n: number): Promise<void> {
@@ -496,9 +721,10 @@ export async function cmdSimulate(n: number): Promise<void> {
 }
 
 /**
- * Measure actual SOL spent committing N rolls in each mode (PDA vs event)
- * on the configured cluster. Reports per-call cost, total cost, and an
- * extrapolation to 100k calls.
+ * Measure actual SOL spent committing N rolls in each mode (PDA, PDA+beta,
+ * event, batch) on the configured cluster. Reports per-call cost, total cost,
+ * and an extrapolation to 100k calls. Batch mode commits the N rolls as
+ * ceil(N / batchSize) Merkle roots.
  *
  * Reads the wallet's pre/post lamport balance to capture true tx fees +
  * priority fees + light tree slot costs, no estimation. Intended as a small
@@ -506,10 +732,16 @@ export async function cmdSimulate(n: number): Promise<void> {
  *
  * Requires init_authority to have already been run for the demo's label.
  *
- * Usage: cc-vrf-demo cost [N] [--sol-usd=160]
+ * Usage: cc-vrf-demo cost [N] [--sol-usd=160] [--batch-size=100]
  */
-export async function cmdCost(n: number, solUsd: number): Promise<void> {
+export async function cmdCost(
+  n: number,
+  solUsd: number,
+  batchSize: number,
+): Promise<void> {
   if (!Number.isFinite(n) || n < 1) throw new Error("cost count must be >= 1");
+  if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 4096)
+    throw new Error("--batch-size must be 1..4096");
   if (!Number.isFinite(solUsd) || solUsd <= 0)
     throw new Error("--sol-usd must be > 0");
 
@@ -536,7 +768,7 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
   console.log("");
 
   // --- PDA mode ---
-  console.log(`[1/3] running ${n} PDA-mode rolls...`);
+  console.log(`[1/4] running ${n} PDA-mode rolls...`);
   const pdaStart = await connection.getBalance(payer.publicKey);
   const t0Pda = Date.now();
   let pdaOk = 0;
@@ -571,7 +803,7 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
   const pdaSpentLamports = pdaStart - pdaEnd;
 
   // --- PDA+Beta mode ---
-  console.log(`[2/3] running ${n} PDA+beta-mode rolls...`);
+  console.log(`[2/4] running ${n} PDA+beta-mode rolls...`);
   const betaStart = await connection.getBalance(payer.publicKey);
   const t0Beta = Date.now();
   let betaOk = 0;
@@ -608,7 +840,7 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
   const betaSpentLamports = betaStart - betaEnd;
 
   // --- Event mode ---
-  console.log(`[3/3] running ${n} event-mode rolls...`);
+  console.log(`[3/4] running ${n} event-mode rolls...`);
   const eventStart = await connection.getBalance(payer.publicKey);
   const t0Evt = Date.now();
   let evtOk = 0;
@@ -642,6 +874,44 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
   const eventDurationMs = Date.now() - t0Evt;
   const eventSpentLamports = eventStart - eventEnd;
 
+  // --- Batch mode ---
+  const batches = Math.ceil(n / batchSize);
+  console.log(
+    `[4/4] running ${n} batch-mode rolls as ${batches} commit(s) of up to ${batchSize}...`,
+  );
+  const batchStart = await connection.getBalance(payer.publicKey);
+  const t0Batch = Date.now();
+  let batchOk = 0;
+  let batchFail = 0;
+  let batchTxOk = 0;
+  for (let done = 0; done < n; done += batchSize) {
+    const size = Math.min(batchSize, n - done);
+    const rolls = proveRolls(sk, "cost-batch", size);
+    try {
+      const ix = await buildCommitBatchEventIx(program, rpc, {
+        owner: payer.publicKey,
+        label: state.label,
+        root: buildBatch(rolls.map((r) => r.leaf)).root,
+        count: size,
+      });
+      await provider.sendAndConfirm(
+        withComputeBudget(new Transaction().add(ix)),
+        [],
+      );
+      batchOk += size;
+      batchTxOk++;
+    } catch (err) {
+      batchFail += size;
+      console.error(
+        `  batch at roll ${done} failed:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+  const batchEnd = await connection.getBalance(payer.publicKey);
+  const batchDurationMs = Date.now() - t0Batch;
+  const batchSpentLamports = batchStart - batchEnd;
+
   // --- Report ---
   const pdaSol = pdaSpentLamports / LAMPORTS_PER_SOL;
   const betaSol = betaSpentLamports / LAMPORTS_PER_SOL;
@@ -652,6 +922,10 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
   const pdaPerCallUsd = pdaPerCallSol * solUsd;
   const betaPerCallUsd = betaPerCallSol * solUsd;
   const evtPerCallUsd = evtPerCallSol * solUsd;
+  const batchSol = batchSpentLamports / LAMPORTS_PER_SOL;
+  const batchPerCallSol = batchOk > 0 ? batchSol / batchOk : 0;
+  const batchPerCallUsd = batchPerCallSol * solUsd;
+  const batchPerTxSol = batchTxOk > 0 ? batchSol / batchTxOk : 0;
 
   console.log("");
   console.log("===== cost results =====");
@@ -701,6 +975,24 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
     `  wall time:           ${(eventDurationMs / 1000).toFixed(1)}s (${evtOk > 0 ? (eventDurationMs / evtOk).toFixed(0) : "—"}ms/call)`,
   );
   console.log("");
+  console.log(`Batch mode (commit_batch_event, up to ${batchSize} per root):`);
+  console.log(
+    `  rolls:               ${batchOk} ok / ${batchFail} fail (${batchTxOk} commit tx)`,
+  );
+  console.log(
+    `  total spent:         ${batchSol.toFixed(9)} SOL  ($${(batchSol * solUsd).toFixed(4)})`,
+  );
+  console.log(
+    `  per commit tx:       ${batchPerTxSol.toFixed(9)} SOL  ($${(batchPerTxSol * solUsd).toFixed(6)})`,
+  );
+  console.log(
+    `  per-call:            ${batchPerCallSol.toFixed(9)} SOL  ($${batchPerCallUsd.toFixed(6)})`,
+  );
+  console.log(
+    `  extrapolated 100k:   ${(batchPerCallSol * 100_000).toFixed(4)} SOL  ($${(batchPerCallUsd * 100_000).toFixed(2)})`,
+  );
+  console.log(`  wall time:           ${(batchDurationMs / 1000).toFixed(1)}s`);
+  console.log("");
   if (pdaPerCallSol > 0 && evtPerCallSol > 0) {
     console.log(
       `Event mode is ${(pdaPerCallSol / evtPerCallSol).toFixed(2)}x cheaper than plain PDA per call.`,
@@ -720,7 +1012,8 @@ export async function cmdCost(n: number, solUsd: number): Promise<void> {
   );
   console.log("market at execution time and may differ.");
 
-  if (pdaFail > 0 || betaFail > 0 || evtFail > 0) process.exit(1);
+  if (pdaFail > 0 || betaFail > 0 || evtFail > 0 || batchFail > 0)
+    process.exit(1);
 }
 
 export function cmdStatus(): void {

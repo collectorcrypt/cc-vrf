@@ -1,0 +1,23 @@
+{
+  "source": "mainnet getCompressedAccount 2026-11-13, slot 469055108",
+  "memo": "jupiter-69748d02-9941-4bd6-84f8-7eb388926669",
+  "alpha": "0x1ba7d9c00ccfdba1e8a177caa0e9338cbda8d6c88a471c39194873bd94e7c162",
+  "proof": "0xf6cebb8c5703eaf869cba5a7e2c85d33d163b8ad7dfae5e4066b4331fbedcd22c7f4bab8a9f8699f7347ab4e16a6061e6979953ea8d8c5f58b3d185abc6ab91843e693b5f2e97855b797a1ab0d2baa09",
+  "beta": "0x310ad29b884c06dc08034cf6d704a8bde79c3a077b710c42e2a286f4b0d9a1624664638d1a125e76eeb20e6860438ebd69c027cc80368ff98ffa2b8b76e8eddc",
+  "commitSignature": "3BWfrfGvcHrStXTt6xRGhxGpvK2wXLXCC7QNWeEhY5DhbkYNZBwT2NAe14VqHP4k3yMqVSYSiigxCYvLDB41K1St",
+  "value": {
+    "hash": "SE8fZQdjPo2vEpdXjBb4p7naQAqK2QDWbAihGVXp8vj",
+    "address": "121guQuzWBawVw1HBB9oWj2Xx8Ra9RADWmXhti7CmiJa",
+    "data": {
+      "discriminator": "6135258964078893011",
+      "data": "AI+wdh4NaOgYZE/o9v7gjeRIWMXm48iRNkxEHlhHxmYLGo9GGwIaS2NJ4mB3fzrmzZ0MVqCAHfMb1c3vtkFi/82KP1dZEm/clAwUuQvS6H1SO2SeQMLCFH6l2139fv1PuogxvVbYTygEljuhzKbdSwZnHE+fvuzh7fkhY/N9kfQxCtKbiEwG3AgDTPbXBKi955w6B3txDELioob0sNmhYkZkY40aEl527rIOaGBDjr1pwCfMgDaP+Y/6K4t26O3cJPX0GwAAAAA=",
+      "dataHash": "13FZApxPYLqa7axDuhujNa7sCFxEgDUgTWCAeqwB6CSR"
+    },
+    "owner": "ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ",
+    "lamports": 0,
+    "tree": "bmt2UxoBxB9xWev4BkLvkGdapsz6sZGkzViPNph7VFi",
+    "leafIndex": 907800,
+    "seq": null,
+    "slotCreated": 469038372
+  }
+}

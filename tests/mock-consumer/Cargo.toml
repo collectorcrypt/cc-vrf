@@ -1,0 +1,30 @@
+[package]
+name = "mock-consumer"
+version = "0.1.0"
+edition = "2021"
+description = "Test-only program that settles requests against a cc-vrf root ring. Never deployed."
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "mock_consumer"
+
+# Its own workspace, outside programs/*, so it never joins the cc-vrf build or Anchor's deploy set.
+[workspace]
+
+[features]
+default = []
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+anchor-lang = "0.31.1"
+cc-vrf-verify = { path = "../../crates/cc-vrf-verify", default-features = false }
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1

@@ -15,6 +15,7 @@ import { WalletProviders } from "./wallet/WalletProviders";
 import { TopNav } from "./components/TopNav";
 import { RegistryPage } from "./pages/RegistryPage";
 import { EventsPage } from "./pages/EventsPage";
+import { BatchPage } from "./pages/BatchPage";
 import { LookupPage } from "./pages/LookupPage";
 import { VerifyPage } from "./pages/VerifyPage";
 
@@ -69,6 +70,7 @@ export function App() {
   const path = hash.split("?")[0]; // route on the path; ignore deep-link query params
   if (path === "#/registry") page = <RegistryPage />;
   else if (path === "#/events") page = <EventsPage />;
+  else if (path === "#/batch") page = <BatchPage />;
   else if (path === "#/lookup") page = <LookupPage />;
   else if (path === "#/verify") page = <VerifyPage />;
   else page = <Landing />;

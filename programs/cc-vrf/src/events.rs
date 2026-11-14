@@ -7,11 +7,11 @@ use anchor_lang::prelude::*;
 /// using the same seed derivation as a `VrfAuthority`, then look up the
 /// authority's compressed PDA for the published pk / suite / frozen state.
 ///
-/// Replay protection is moved from the chain to the verifier: a malicious
-/// operator could emit two events with the same `memo_hash` and different
-/// `proof_hash`es. The VRF proof is deterministic given the pk + alpha, so at
-/// most one of those would pass ECVRF verification — verifiers must scan for
-/// duplicates and pick the canonical commit.
+/// Replay protection is moved from the chain to the verifier: an operator
+/// could emit two events with the same `memo_hash` and different
+/// `proof_hash`es. ECVRF output is unique per (pk, alpha): every proof that
+/// verifies yields the same beta, so duplicates cannot change the result;
+/// verifiers match `proof_hash` against the proof they hold.
 #[event]
 pub struct VrfProofCommitted {
     /// The signer who emitted this commit. Implicitly the authority owner —
@@ -23,4 +23,27 @@ pub struct VrfProofCommitted {
     pub proof_hash: [u8; 32],
     pub alpha_hash: [u8; 32],
     pub committed_slot: u64,
+}
+
+/// One Merkle root over `count` VRF results (batch spec v1), from `commit_batch_event` (`ring_seq: None`) or
+/// `commit_batch_ring` (`ring_seq: Some(seq)`). Verify a leaf with `count`; see crates/cc-vrf-verify.
+#[event]
+pub struct VrfBatchCommitted {
+    pub owner: Pubkey,
+    pub label: [u8; 32],
+    pub root: [u8; 32],
+    pub count: u32,
+    pub leaf_version: u8,
+    pub ring_seq: Option<u64>,
+    pub committed_slot: u64,
+}
+
+/// `attest_possession` succeeded: the VRF key signed the possession message for this authority.
+#[event]
+pub struct VrfPossessionAttested {
+    pub authority: [u8; 32],
+    pub owner: Pubkey,
+    pub label: [u8; 32],
+    pub pk: [u8; 32],
+    pub slot: u64,
 }

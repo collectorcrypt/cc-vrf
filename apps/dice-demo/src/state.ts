@@ -28,11 +28,18 @@ export interface DemoState {
      *   - "pda": commit_proof (compressed PDA, off-chain verification)
      *   - "pda-beta": commit_proof_with_beta (PDA + on-chain beta for cross-program reads)
      *   - "event": commit_proof_event (event-only, no PDA)
+     *   - "batch": one leaf of a commit_batch_event Merkle root
+     *   - "ring": one leaf of a commit_batch_ring root (also kept in the root ring)
      * Defaults to "pda" for legacy rolls that pre-date this field.
      */
-    mode?: "pda" | "pda-beta" | "event";
-    /** Tx signature for event-mode rolls (event has no deterministic address to look up). */
+    mode?: "pda" | "pda-beta" | "event" | "batch" | "ring";
+    /** Tx signature for event, batch and ring rolls (no deterministic address to look up). */
     txSignature?: string;
+    /** Batch and ring rolls: the leaf's index and its RFC 9162 path (hex, leaf level first). */
+    batchIndex?: number;
+    batchPath?: string[];
+    /** Ring rolls: the ring sequence the root was committed at. */
+    ringSeq?: string;
   }[];
 }
 

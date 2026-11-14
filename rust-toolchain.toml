@@ -1,0 +1,3 @@
+# Host compiler pin (tests, IDL); the SBF build pins platform-tools in scripts/build-sbf.sh.
+[toolchain]
+channel = "1.91.0"

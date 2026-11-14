@@ -161,18 +161,18 @@ export function EventsPage() {
             The math guarantee
           </h3>
           <p className="text-sm text-ink-300">
-            RFC 9381 ECVRF is{" "}
-            <span className="text-ink-50 font-semibold">deterministic</span>:
-            given a public key and an input, there is{" "}
+            RFC 9381 ECVRF output is{" "}
+            <span className="text-ink-50 font-semibold">unique</span>: given a
+            public key and an input, every valid proof yields{" "}
             <span className="text-ink-50 font-semibold">
-              exactly one valid 80-byte proof
+              the same 64-byte beta
             </span>
-            . An attacker who emits a junk event for memo{" "}
-            <code className="font-mono">X</code> can&rsquo;t produce a second{" "}
-            <em>valid</em> proof for memo <code className="font-mono">X</code>.
-            The real proof is somewhere in the event list &mdash; unless the
-            operator never emitted it, which is the same liveness risk as
-            registry mode.
+            . A junk event for memo <code className="font-mono">X</code> never
+            verifies without the VRF secret key, and even the key holder&rsquo;s
+            second <em>valid</em> proof for <code className="font-mono">X</code>{" "}
+            yields the same beta. The real proof is somewhere in the event list
+            &mdash; unless the operator never emitted it, which is the same
+            liveness risk as registry mode.
           </p>
           <p className="mt-3 text-sm text-ink-300">
             <span className="text-ink-50 font-semibold">
