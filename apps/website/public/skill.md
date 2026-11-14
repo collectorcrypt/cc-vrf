@@ -42,8 +42,8 @@ For the Collector Crypt gacha (~64k results/day across Solana, EVM and partner r
 ## Availability
 
 - **Program**: `ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ`, the same ID on devnet and mainnet. Upgrades go through the Squads vault `2Ef85QR7xrGJPdSvFcDz6X9ctqUoSptpi4vsnejpPAZQ`.
-- **v2** (batch commits, the root ring, `attest_possession`; `revoke_authority` removed) is **live on devnet**. Mainnet is being upgraded; until then mainnet has the per-result instructions only. Build and test on devnet now: the batch format is final.
-- **SDK**: `@collectorcrypt/vrf-client` 0.2.0 has the v2 API. Until the mainnet upgrade it's on the `next` tag (`latest` is 0.1.5, per-result only).
+- **v2** (batch commits, the root ring, `attest_possession`; `revoke_authority` removed) is **live on devnet and mainnet** (mainnet since 2026-11-14). The batch format is final.
+- **SDK**: `@collectorcrypt/vrf-client` 0.2.0 or later has the v2 API (0.1.x has the per-result API only).
 
 ## Architecture
 
@@ -76,7 +76,7 @@ root = RFC 9162 Merkle tree hash over the leaves in index order
 ### 1. Install
 
 ```bash
-pnpm add @collectorcrypt/vrf-client@next @lightprotocol/stateless.js \
+pnpm add @collectorcrypt/vrf-client@^0.2.0 @lightprotocol/stateless.js \
         @coral-xyz/anchor @solana/web3.js @noble/hashes
 ```
 
@@ -246,11 +246,11 @@ await provider.sendAndConfirm(new Transaction().add(ix), []);
 
 ## Reference
 
-- **Program ID:** `ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ` (devnet + mainnet; v2 on devnet, mainnet upgrade in progress)
+- **Program ID:** `ccvrfu3fSpbnPLiUqdWAt85Zn9nq96ekwGTbHqGtdgQ` (devnet + mainnet, v2 on both)
 - **Browse operators:** https://vrf.collectorcrypt.com/#/lookup
 - **Verify a result:** https://vrf.collectorcrypt.com/#/verify (`mode=batch` with `sig`, `index`, `path`)
 - **Source:** https://github.com/collectorcrypt/cc-vrf (program, SDK, `crates/cc-vrf-verify`, dice demo)
-- **An integration:** the Collector Crypt gacha commits every pack in 5-minute batches (devnet now, mainnet at the upgrade): https://docs.collectorcrypt.com/gacha/vrf#checking-a-batched-pack
+- **An integration:** the Collector Crypt gacha commits every pack in 5-minute batches (devnet now; mainnet from its next deploy): https://docs.collectorcrypt.com/gacha/vrf#checking-a-batched-pack
 - **Spec:** RFC 9381 §5.5 (ECVRF-EDWARDS25519-SHA512-TAI, suite `0x03`); RFC 9162 §2.1 (Merkle tree hash, inclusion paths)
 - **Compressed accounts:** Light Protocol v2 (`@lightprotocol/stateless.js` 0.23.x)
 - **Tests:** 68 ECVRF tests (byte-exact vs the Rust reference), 57 SDK tests, 23 on-chain integration suites, and a 117-case adversarial suite run on devnet.
